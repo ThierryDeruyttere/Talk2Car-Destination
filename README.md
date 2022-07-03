@@ -8,7 +8,7 @@ Talk2Car-Destination is an extension to [Talk2Car](https://github.com/talk2car/T
 # Annotation format
 Each json from the dataset is a dictionary where the key is the command token and the value is a list of multiple possibile destinations.
 Each destination annotation has the following format. 
-````
+```
 {
  "image": "img name",
  "top-down": "top down image name"
