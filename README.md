@@ -6,14 +6,14 @@ This is the dataset that accompanies the paper [Predicting Physical World Destin
 Talk2Car-Destination is an extension to [Talk2Car](https://github.com/talk2car/Talk2Car) which is built on [nuScenes](https://www.nuscenes.org/).
 
 # Annotation format
-Each json from the dataset is a dictionary where the key is the command token and the value is a list of multiple possibile destinations.
-Each destination annotation has the following format. 
+Each json from the dataset is a dictionary where the key is the command token and the value is a dictionary of the following format.
+
 ```
 {
  "image": "img name",
  "top-down": "top down image name"
  "command": "given command"
- "destination": [x,y], #x, y is the destination in the top-down image
+ "destinations": [[x,y]], #is a list of (x, y) pairs where each pair is a destination in the top-down image
  "egobbox_top": [ 4 x 2 list], # contains the corners of the ego vehicle bounding box in the top-down image.
  "all_detections_top": [64 x 4 x 2 list], # contains the corners of all detected objects in the top-down image.
  "detected_object_classes": [64 list], # contains the class of each detected object.
