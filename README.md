@@ -28,7 +28,7 @@ Each json from the dataset is a dictionary where the key is the command token an
 
 1. Download top-down images [here](https://drive.google.com/file/d/1lrgghIVYPxCboZ77eTO8cdFcm_6mcZga/view?usp=sharing) and put the images in the data folder.
 2. Download the frontal images [here](https://drive.google.com/file/d/1bhcdej7IFj5GqfvXGrHGPk2Knxe77pek/view?usp=sharing) and put the images in the data folder.
-3. Download the Talk2Car-Destination dataset [here](https://drive.google.com/file/d/1hZ-3OOAdpFUjkGyObi0xqg10U62UNOrj/view?usp=sharing) and put the jsons in the data folder.
+3. Download the Talk2Car-Destination dataset [here](https://drive.google.com/file/d/1nGo8_CvOAkW4L0_HwVahp2pRjZb3dq-R/view?usp=sharing) and put the jsons in the data folder.
 4. Run `visualize.py` to visualize a sample of the dataset
 
 # Integration with Talk2Car
