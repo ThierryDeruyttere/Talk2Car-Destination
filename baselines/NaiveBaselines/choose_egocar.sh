@@ -1,0 +1,11 @@
+python choose_egocar.py\
+  --dataset "Talk2Car_Detector"\
+  --data_dir "../../data"\
+  --detector_data_dir "../../data_root/fcos3d_extracted"\
+  --save_path "EgoCar"\
+  --draw\
+  --num_heatmaps_drawn 5\
+  --thresholds 2.0 4.0\
+  --width 300\
+  --height 200\
+  --gpu_index 2

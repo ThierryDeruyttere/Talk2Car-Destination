@@ -1,0 +1,37 @@
+program: train.py
+method: bayes
+project: MDN
+name: MDN
+command:
+  - python
+  - ${program}
+  - "--gpus"
+  - 0,
+  - "--batch_size"
+  - 32
+  - "--num_workers=4"
+  - "--max_epochs=50"
+  - "--patience=10"
+  - "--width=300"
+  - "--height=200"
+  - "--dataset=Talk2Car_Detector"
+  - "--data_dir=/cw/liir/NoCsBack/testliir/thierry/PathProjection/data_root"
+  - "--save_dir=/home2/NoCsBack/hci/dusan/Checkpoints/MDN"
+  - "--use_ref_obj"
+  - "--encoder=ResNet-18"
+  - "--mdn_type=dependent"
+  - "--lr=3e-5"
+  - ${args}
+metric:
+  name: test_ade
+  goal: minimize
+
+parameters:
+  cov_decay:
+    values: [0.0, 1.0, 5.0]
+  num_components:
+    values: [3]
+  mu_diversity:
+    values: [0.0, 1.0]
+  pi_entropy:
+    values: [0.0, 1.0]

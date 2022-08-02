@@ -1,0 +1,31 @@
+program: train.py
+method: grid
+project: T2C_Path
+name: NonParametric
+command:
+  - python
+  - ${program}
+  - "--gpus"
+  - 0,
+  - "--batch_size"
+  - 16
+  - "--num_workers=4"
+  - "--max_epochs=50"
+  - "--patience=10"
+  - "--width=300"
+  - "--height=200"
+  - "--dataset=Talk2Car_Detector"
+  - "--data_dir=/cw/liir/NoCsBack/testliir/thierry/PathProjection/data_root"
+  - "--save_dir=/home2/NoCsBack/hci/dusan/BaselinesOutputs/MDNSweepLR"
+  - "--use_ref_obj"
+  - "--encoder=ResNet-18"
+  - "--gaussian_size=11"
+  - "--gaussian_sigma=3"
+  - ${args}
+metric:
+  name: test_ade
+  goal: minimize
+
+parameters:
+  lr:
+    values: [1e-5, 3e-5, 1e-4]

@@ -1,0 +1,17 @@
+python train.py\
+ --gpus $1,\
+ --width=288\
+ --height=192\
+ --n_conv 5\
+ --combine_at 2\
+ --lr 3e-5\
+ --num_workers=8\
+ --batch_size=32\
+ --max_epochs 100\
+ --data_dir "../../data"\
+ --dataset "Talk2Car_Detector"\
+ --save_dir "checkpoint"\
+ --use_ref_obj\
+ --patience 10\
+ --active_scale_inds 1 1 1 1\
+ --inner_channel=32

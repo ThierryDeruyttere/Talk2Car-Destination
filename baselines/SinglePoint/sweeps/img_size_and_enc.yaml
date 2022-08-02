@@ -1,0 +1,25 @@
+program: train_standalone.py
+method: grid
+project: EndPoint
+name: Correct_All_Objs_SinglePoint
+command:
+  - python3
+  - ${program}
+  - "--gpus"
+  - 0,
+  - "--batch_size"
+  - 20
+  - "--unrolled"
+  - "--num_workers=12"
+  - "--max_epochs=100"
+  - "--save_dir=/export/home1/NoCsBack/hci/thierry/endpoint_checkpoints"
+  - ${args}
+metric:
+  name: final_test_l2
+  goal: minimize
+
+parameters:
+  encoder:
+    values: ["ResNet-18", "ResNet-101", "FlowNet"]
+  img_size:
+    values: ["600-400", "300-200", "150-100"]

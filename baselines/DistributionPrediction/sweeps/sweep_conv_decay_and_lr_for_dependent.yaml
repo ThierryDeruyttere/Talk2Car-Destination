@@ -1,0 +1,32 @@
+program: train.py
+method: grid
+project: T2C_Path
+name: DistributionPrediction
+command:
+  - python
+  - ${program}
+  - "--gpus"
+  - 0,
+  - "--batch_size"
+  - 16
+  - "--num_workers=4"
+  - "--max_epochs=50"
+  - "--patience=10"
+  - "--width=300"
+  - "--height=200"
+  - "--dataset=Talk2Car_Detector"
+  - "--data_dir=/cw/liir/NoCsBack/testliir/thierry/PathProjection/data_root"
+  - "--save_dir=/home2/NoCsBack/hci/dusan/Talk2Car_Path_Results/DistributionPredictionSweep"
+  - "--use_ref_obj"
+  - "--encoder=ResNet-18"
+  - "--mvg_type=dependent"
+  - ${args}
+metric:
+  name: test_ade
+  goal: minimize
+
+parameters:
+  lr:
+    values: [1e-5, 3e-5, 1e-4]
+  cov_decay:
+    values: [0.0, 1.0, 5.0]
