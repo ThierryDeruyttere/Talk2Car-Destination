@@ -343,29 +343,12 @@ def main(args):
     all_demds = torch.tensor(all_demds)
     all_demds_eb = torch.std(all_demds, dim=0).item() / (counter ** 0.5)
 
-
-    print(f"Mean NLL: {all_nlls.mean().item():.2f} +/- {all_nlls_eb:.2f}")
-    print(f"Mean DEMD: {all_demds.mean().item()} +/- {all_demds_eb}")
-    for i, threshold in enumerate(args.thresholds):
-        print(f"Mean PA @ {threshold} : {all_pases[i].mean().item() * 100:.2f} +/- {all_pases_eb[i] * 100:.2f} %")
-    print(f"Mean ADE: {all_ades.mean().item():.2f} +/- {all_ades_eb:.2f} m")
-    print(f"Median ADE: {all_ades.median().item():.2f} m")
-
     with open(os.path.join(save_path, "metrics.json"), "w") as f:
         json.dump(results, f)
 
     with open(os.path.join(save_path, f"per_command_metrics_fullconv_topk_{args.component_topk}.json"), "w") as f:
         json.dump(per_command_metrics, f)
 
-    print(f"Percentage active SCALE-0: {perc_scale_0 * 100:.2f}% at TOPK-{args.component_topk}")
-    print(f"Percentage active SCALE-1: {perc_scale_1 * 100:.2f}% at TOPK-{args.component_topk}")
-    print(f"Percentage active SCALE-2: {perc_scale_2 * 100:.2f}% at TOPK-{args.component_topk}")
-    print(f"Percentage active SCALE-3: {perc_scale_3 * 100:.2f}% at TOPK-{args.component_topk}")
-
-    print(f"Share SCALE-0: {num_scale_0 / num_scale_total * 100:.2f}% at TOPK-{args.component_topk}")
-    print(f"Share SCALE-1: {num_scale_1 / num_scale_total * 100:.2f}% at TOPK-{args.component_topk}")
-    print(f"Share SCALE-2: {num_scale_2 / num_scale_total * 100:.2f}% at TOPK-{args.component_topk}")
-    print(f"Share SCALE-3: {num_scale_3 / num_scale_total * 100:.2f}% at TOPK-{args.component_topk}")
 
 
 if __name__ == "__main__":

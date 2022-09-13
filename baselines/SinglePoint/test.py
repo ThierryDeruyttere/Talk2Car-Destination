@@ -167,12 +167,6 @@ def main(args):
     all_pases = torch.tensor(all_pases)
     all_pases_eb = (torch.std(all_pases, dim=1) / (counter ** 0.5)).tolist()
 
-
-    for i, threshold in enumerate(args.thresholds):
-        print(f"Mean PA @ {threshold} : {all_pases[i].mean().item() * 100:.2f} +/- {all_pases_eb[i] * 100:.2f} %")
-    print(f"Mean ADE: {all_ades.mean().item():.2f} +/- {all_ades_eb:.2f} m")
-    print(f"Median ADE: {all_ades.median().item():.2f} m")
-
     with open(os.path.join(save_path, "metrics.json"), "w") as f:
         json.dump(results, f)
 

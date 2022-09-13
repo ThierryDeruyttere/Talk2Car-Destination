@@ -240,14 +240,6 @@ def main(args):
     all_demds = torch.tensor(all_demds)
     all_demds_eb = torch.std(all_demds, dim=0).item() / (counter ** 0.5)
 
-
-    print(f"Mean NLL: {all_nlls.mean().item():.2f} +/- {all_nlls_eb:.2f}")
-    print(f"Mean DEMD: {all_demds.mean().item()} +/- {all_demds_eb}")
-    for i, threshold in enumerate(args.thresholds):
-        print(f"Mean PA @ {threshold} : {all_pases[i].mean().item() * 100:.2f} +/- {all_pases_eb[i] * 100:.2f} %")
-    print(f"Mean ADE: {all_ades.mean().item():.2f} +/- {all_ades_eb:.2f} m")
-    print(f"Median ADE: {all_ades.median().item():.2f} m")
-
     with open(os.path.join(save_path, "metrics.json"), "w") as f:
         json.dump(results, f)
 
