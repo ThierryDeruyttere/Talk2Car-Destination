@@ -1,9 +1,6 @@
 import json
 import numpy as np
 import pandas as pd
-intents = json.load(open("/cw/liir_code/NoCsBack/thierry/PathProjection/data_root/fcos3d_extracted/all_command_intents.json", "r"))
-test_data = json.load(open("/cw/liir_code/NoCsBack/thierry/PathProjection/data_root/test.json", "r"))
-test_intents = {k: [intent.replace("action", "") for intent, is_gt in v.items() if is_gt][0] for k,v in intents.items() if k in test_data}
 import matplotlib.pyplot as plt
 from matplotlib import cm
 import seaborn as sns
@@ -45,6 +42,11 @@ intent_mapping = {
 
 
 def create_latex_table_for_intents():
+    intents = json.load(open("all_command_intents.json", "r"))
+    test_intents = {k: [intent.replace("action", "") for intent, is_gt in v.items() if is_gt][0] for k, v in
+                    intents.items()}
+
+
     row_names = None
     model_intent_data = {}
     for model_name, model_json in model_dict.items():
@@ -86,7 +88,7 @@ def create_latex_table_for_intents():
         df_dict = {}#{"intent": row_names}
         column_names = ['SinglePoint','NonParametric','UnimodalNormal','MDN',
                                                      'GoalGAN', 'Endpoint VAE',
-                                                     'RegFlow', 'PDPC', 'PDPC - Top 64', 'PDPC - Top 32']
+                                                     'RegFlow', 'PDPC - Base', 'PDPC - Top 64', 'PDPC - Top 32']
             #, "\delta 2nd Best"]
         #list(model_intent_data.keys())
         for model, intent_data in model_intent_data.items():
