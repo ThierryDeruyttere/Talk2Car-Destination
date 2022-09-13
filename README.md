@@ -37,6 +37,10 @@ Drag the Talk2Car-Destination dataset into the `data/commands` folder of Talk2Ca
 Next, when calling the `get_talk2car_class`, set `load_talk2car_destination` to `True`.
 Talk2Car-Destination will now be loaded.
 
+# Baselines
+
+You can find the baselines in the `baselines` folder.
+
 # Citation
 If you use this dataset, please consider using the following citation:
 ```
