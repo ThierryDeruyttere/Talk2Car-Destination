@@ -12,7 +12,7 @@ conda create --name destination --file requirements.txt
 The run information about each destination prediction model can be found in its own folder.
 
 
-# Evaluation
+## Evaluation
 To evaluate the models, please go to `destination_predictors/evaluation` and run `evaluation.py`.
 This will output the results in the paper.
 If you want to add new models, put the jsons into the `jsons` folder next to `evaluation.py`.
