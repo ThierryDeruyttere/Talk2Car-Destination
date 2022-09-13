@@ -42,10 +42,6 @@ intent_mapping = {
 
 
 def create_latex_table_for_intents():
-    intents = json.load(open("all_command_intents.json", "r"))
-    test_intents = {k: [intent.replace("action", "") for intent, is_gt in v.items() if is_gt][0] for k, v in
-                    intents.items()}
-
 
     row_names = None
     model_intent_data = {}
@@ -250,6 +246,10 @@ def compute_results_for_paper():
             #print("")
 
 if __name__ == "__main__":
+    intents = json.load(open("all_command_intents.json", "r"))
+    test_intents = {k: [intent.replace("action", "") for intent, is_gt in v.items() if is_gt][0] for k, v in
+                    intents.items()}
+
     compute_results_for_paper()
 
     # Create box plot
