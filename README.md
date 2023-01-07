@@ -41,6 +41,10 @@ Talk2Car-Destination will now be loaded.
 
 You can find the baselines in the `baselines` folder.
 
+# Object Detectors
+
+The used object detectors and their weights you can find in the `object_detectors` folder.
+
 # Citation
 If you use this dataset, please consider using the following citation:
 ```
