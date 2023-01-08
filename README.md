@@ -5,6 +5,9 @@ This is the dataset that accompanies the paper [Predicting Physical World Destin
 
 Talk2Car-Destination is an extension to [Talk2Car](https://github.com/talk2car/Talk2Car) which is built on [nuScenes](https://www.nuscenes.org/).
 
+**Note**: The Talk2Car-Trajectory dataset has also been released [here](https://github.com/ThierryDeruyttere/Talk2Car-Trajectory).
+This dataset also contains the Talk2Car-Destination dataset.
+
 # Annotation format
 Each json from the dataset is a dictionary where the key is the command token and the value is a dictionary of the following format.
 
