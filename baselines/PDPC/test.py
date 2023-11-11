@@ -11,16 +11,16 @@ import torch.nn.functional as F
 from torch.utils.data import DataLoader
 
 from model import PDPC
-from talk2car import Talk2Car, Talk2Car_Detector
+from talk2car import Talk2Car_Detector
 from utils import draw_heatmap_t2c, draw_heatmap_frontal_t2c, draw_frontal_boxes, points_cam2img
 from tqdm import tqdm
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--dataset", default="Talk2car", required=False)
+parser.add_argument("--dataset", default="Talk2car_Detector", required=False)
 parser.add_argument(
     "--data_dir",
     required=False,
-    default="/cw/liir/NoCsBack/testliir/thierry/PathProjection/data_root"
+    default="../../data"
 )
 parser.add_argument('--gpu_index', type=int, default=0)
 parser.add_argument("--seed", default=42, required=False)
@@ -112,15 +112,15 @@ def main(args):
             unrolled=hparams["unrolled"],
             use_ref_obj=hparams["use_ref_obj"]
         )
-    else:
-        data_test = Talk2Car(
-            split="val",
-            root=args.data_dir,
-            height=hparams["height"],
-            width=hparams["width"],
-            unrolled=hparams["unrolled"],
-            use_ref_obj=hparams["use_ref_obj"]
-        )
+    # else:
+    #     data_test = Talk2Car(
+    #         split="val",
+    #         root=args.data_dir,
+    #         height=hparams["height"],
+    #         width=hparams["width"],
+    #         unrolled=hparams["unrolled"],
+    #         use_ref_obj=hparams["use_ref_obj"]
+    #     )
 
     nll_sum = 0.0
     demd_sum = 0.0
@@ -132,10 +132,10 @@ def main(args):
     all_pases = [[] for _ in range(len(args.thresholds))]
     all_ades = []
 
-    num_scale_0 = 0.0
-    num_scale_1 = 0.0
-    num_scale_2 = 0.0
-    num_scale_3 = 0.0
+    # num_scale_0 = 0.0
+    # num_scale_1 = 0.0
+    # num_scale_2 = 0.0
+    # num_scale_3 = 0.0
 
     counter = 0
     to_meters = torch.tensor([120.0, 80.0]).to(device)
@@ -157,14 +157,14 @@ def main(args):
         command = command.to(device)
 
         mu, sigma, pi, location = model.forward(x, command)
-        mu, sigma, pi, scale_ind_agg = model.predictor.prepare_outputs(mu, sigma, pi, location)
+        mu, sigma, pi = model.predictor.prepare_outputs(mu, sigma, pi, location)
 
         # topk
         if args.component_topk > 0:
             pi, active_inds = pi.topk(args.component_topk, dim=1)
             mu = mu[:, active_inds.squeeze()]
             sigma = sigma[:, active_inds.squeeze()]
-            scale_ind_agg = scale_ind_agg[:, active_inds.squeeze()]
+            # scale_ind_agg = scale_ind_agg[:, active_inds.squeeze()]
 
         pi = F.softmax(pi, dim=1)
 
@@ -211,10 +211,10 @@ def main(args):
         demd /= B
         demd_sum += demd
 
-        num_scale_0 += torch.count_nonzero((scale_ind_agg == 0.0).float())
-        num_scale_1 += torch.count_nonzero((scale_ind_agg == 1.0).float())
-        num_scale_2 += torch.count_nonzero((scale_ind_agg == 2.0).float())
-        num_scale_3 += torch.count_nonzero((scale_ind_agg == 3.0).float())
+        # num_scale_0 += torch.count_nonzero((scale_ind_agg == 0.0).float())
+        # num_scale_1 += torch.count_nonzero((scale_ind_agg == 1.0).float())
+        # num_scale_2 += torch.count_nonzero((scale_ind_agg == 2.0).float())
+        # num_scale_3 += torch.count_nonzero((scale_ind_agg == 3.0).float())
 
         result_row = {
             "bidx": bidx,
@@ -323,25 +323,25 @@ def main(args):
 
         counter = counter + 1
 
-    perc_scale_0 = num_scale_0 / counter / ((hparams["height"] / 4) * (hparams["width"] / 4))
-    perc_scale_1 = num_scale_1 / counter / ((hparams["height"] / 8) * (hparams["width"] / 8))
-    perc_scale_2 = num_scale_2 / counter / ((hparams["height"] / 16) * (hparams["width"] / 16))
-    perc_scale_3 = num_scale_3 / counter / ((hparams["height"] / 32) * (hparams["width"] / 32))
+    # perc_scale_0 = num_scale_0 / counter / ((hparams["height"] / 4) * (hparams["width"] / 4))
+    # perc_scale_1 = num_scale_1 / counter / ((hparams["height"] / 8) * (hparams["width"] / 8))
+    # perc_scale_2 = num_scale_2 / counter / ((hparams["height"] / 16) * (hparams["width"] / 16))
+    # perc_scale_3 = num_scale_3 / counter / ((hparams["height"] / 32) * (hparams["width"] / 32))
+    #
+    # num_scale_0 = num_scale_0 / counter
+    # num_scale_1 = num_scale_1 / counter
+    # num_scale_2 = num_scale_2 / counter
+    # num_scale_3 = num_scale_3 / counter
+    # num_scale_total = num_scale_0 + num_scale_1 + num_scale_2 + num_scale_3
 
-    num_scale_0 = num_scale_0 / counter
-    num_scale_1 = num_scale_1 / counter
-    num_scale_2 = num_scale_2 / counter
-    num_scale_3 = num_scale_3 / counter
-    num_scale_total = num_scale_0 + num_scale_1 + num_scale_2 + num_scale_3
-
-    all_nlls = torch.tensor(all_nlls)
-    all_nlls_eb = torch.std(all_nlls, dim=0) .item() / (counter ** 0.5)
-    all_ades = torch.tensor(all_ades)
-    all_ades_eb = torch.std(all_ades, dim=0).item() / (counter ** 0.5)
-    all_pases = torch.tensor(all_pases)
-    all_pases_eb = (torch.std(all_pases, dim=1) / (counter ** 0.5)).tolist()
-    all_demds = torch.tensor(all_demds)
-    all_demds_eb = torch.std(all_demds, dim=0).item() / (counter ** 0.5)
+    # all_nlls = torch.tensor(all_nlls)
+    # all_nlls_eb = torch.std(all_nlls, dim=0) .item() / (counter ** 0.5)
+    # all_ades = torch.tensor(all_ades)
+    # all_ades_eb = torch.std(all_ades, dim=0).item() / (counter ** 0.5)
+    # all_pases = torch.tensor(all_pases)
+    # all_pases_eb = (torch.std(all_pases, dim=1) / (counter ** 0.5)).tolist()
+    # all_demds = torch.tensor(all_demds)
+    # all_demds_eb = torch.std(all_demds, dim=0).item() / (counter ** 0.5)
 
     with open(os.path.join(save_path, "metrics.json"), "w") as f:
         json.dump(results, f)
