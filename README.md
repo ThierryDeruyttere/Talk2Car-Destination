@@ -5,6 +5,9 @@ This is the dataset that accompanies the paper [Predicting Physical World Destin
 
 Talk2Car-Destination is an extension to [Talk2Car](https://github.com/talk2car/Talk2Car) which is built on [nuScenes](https://www.nuscenes.org/).
 
+**Note**: The Talk2Car-Trajectory dataset has also been released [here](https://github.com/ThierryDeruyttere/Talk2Car-Trajectory).
+This dataset also contains the Talk2Car-Destination dataset.
+
 # Annotation format
 Each json from the dataset is a dictionary where the key is the command token and the value is a dictionary of the following format.
 
@@ -28,7 +31,7 @@ Each json from the dataset is a dictionary where the key is the command token an
 
 1. Download top-down images [here](https://drive.google.com/file/d/1lrgghIVYPxCboZ77eTO8cdFcm_6mcZga/view?usp=sharing) and put the images in the data folder.
 2. Download the frontal images [here](https://drive.google.com/file/d/1bhcdej7IFj5GqfvXGrHGPk2Knxe77pek/view?usp=sharing) and put the images in the data folder.
-3. Download the Talk2Car-Destination dataset [here](https://drive.google.com/file/d/1lkXzUtEWIQEFj3u8mygKRy4hCF_jSUUz/view?usp=sharing) and put all files in the data folder. We also include pre-extracted commmand embeddings with a Sentence-BERT model in the .h5 files in this zip.
+3. Download the Talk2Car-Destination dataset [here](https://drive.google.com/file/d/1DS8_90IPm81oeFHnjUGleeFitCnWXH7E/view?usp=share_link) and put all files in the data folder. We also include pre-extracted commmand embeddings with a Sentence-BERT model in the .h5 files in this zip.
 4. Run `visualize.py` to visualize a sample of the dataset
 
 # Integration with Talk2Car
@@ -40,6 +43,10 @@ Talk2Car-Destination will now be loaded.
 # Baselines
 
 You can find the baselines in the `baselines` folder.
+
+# Object Detectors
+
+The used object detectors and their weights you can find in the `object_detectors` folder.
 
 # Citation
 If you use this dataset, please consider using the following citation:
