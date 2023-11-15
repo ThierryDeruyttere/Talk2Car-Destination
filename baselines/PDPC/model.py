@@ -7,7 +7,7 @@ import torch
 import torch.distributions as D
 import torch.nn.functional as F
 import pytorch_lightning as pl
-from talk2car import Talk2Car, Talk2Car_Detector
+from talk2car import Talk2Car_Detector
 from torch.utils.data import DataLoader
 
 from fconv import FCONV
@@ -92,7 +92,7 @@ class PDPC(pl.LightningModule):
             height=self.input_height,
             n_conv=self.hparams.n_conv,
             combine_at=self.hparams.combine_at,
-            active_scale_inds=self.hparams.active_scale_inds,
+            # active_scale_inds=self.hparams.active_scale_inds,
             inner_channel=self.hparams.inner_channel if "inner_channel" in self.hparams else 256
         )
 

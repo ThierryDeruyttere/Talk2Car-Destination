@@ -1,4 +1,5 @@
 import random
+import re
 from itertools import groupby
 import copy
 import h5py
@@ -76,7 +77,12 @@ class Talk2Car_Detector(Dataset):
             top_draw = ImageDraw.Draw(mask)
             boxes = [objects[box_index] for box_index in box_indices]
             for box in boxes:
-                top_draw.polygon([(x * self.width_scaling, y * self.height_scaling) for (x, y) in box], fill=self.object_value)
+                # This is the original code that was used to train the original PDPC model
+                # Keeping it like this for the sake of reproducibility
+                top_draw.polygon([(x , y ) for (x, y) in box], fill=self.object_value)
+
+                # This is the code that should actually have been used.
+                # top_draw.polygon([(x * self.width_scaling, y * self.height_scaling) for (x, y) in box], fill=self.object_value)
             masks[class_ind] = torch.from_numpy(np.array(mask))
         return masks
 
@@ -174,19 +180,20 @@ class Talk2Car_Detector(Dataset):
         img_path = os.path.join(self.dataset_root, "top_down", img_name)
 
         frontal_img_name = item["image"]
-        frontal_img_path = os.path.join(self.dataset_root, "frontal_imgs", frontal_img_name)
+        frontal_img_path = os.path.join(self.dataset_root, "imgs", "img_"+frontal_img_name)
 
         ego_car = item["egobbox_top"]
-        ref_obj = item["gt_referred_obj_top"]
+        # ref_obj = item["gt_referred_obj_top"]
         endpoint = [item["destinations"][0][0], item["destinations"][0][1]]
         command = item["command"]
 
+        dataset_ix = re.findall(r'\d+', item["top-down"])[0]
         frame_data = json.load(
             open(
                 os.path.join(
                     self.dataset_root,
                     "frame_data",
-                    "rotated_" + item[0]["frame_data_url"].split("/")[-1],
+                    f"rotated_frame_{self.split}_{dataset_ix}_data.json",
                 ),
                 "r",
             )
@@ -197,7 +204,7 @@ class Talk2Car_Detector(Dataset):
         detection_pred_box_index = item["predicted_referred_obj_index"]
         ref_obj_pred = detection_boxes[detection_pred_box_index]
 
-        return img_path, frontal_img_path, ego_car, ref_obj, ref_obj_pred, detection_boxes, endpoint, command, frame_data
+        return img_path, frontal_img_path, ego_car, ref_obj_pred, detection_boxes, endpoint, command, frame_data
 
 
 def main():

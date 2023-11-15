@@ -16,5 +16,9 @@ The run information about each destination prediction model can be found in its 
 ## Evaluation
 To evaluate the models, please go to `destination_predictors/evaluation` and run `evaluation.py`.
 This will output the results in the paper.
-If you want to evaluate a newly trained baseline, please run it's test script which will produce a `metrics.json`.
+If you want to evaluate a newly trained baseline, please run its test script which will produce a `metrics.json`.
 Copy this file to `evaluation/jsons` and add this file to the model dict in `evaluation.py`
+
+## Checkpoints
+
+The checkpoints of the models can be found [here](https://drive.google.com/file/d/1IXOzu6qlyzqcck1J5vVNYFoOzsW7XiVw/view?usp=sharing).

@@ -239,7 +239,7 @@ def main(args):
 
         if args.draw and counter < args.num_heatmaps_drawn:
             # Draw some predictions
-            img_path, frontal_img_path, ego_car, ref_obj, ref_obj_pred, det_objs, _, command_text, frame_data = data_test.get_obj_info(
+            img_path, frontal_img_path, ego_car, ref_obj_pred, det_objs, _, command_text, frame_data = data_test.get_obj_info(
                 bidx
             )
             with open(
@@ -257,7 +257,7 @@ def main(args):
             # GT Ref Object
             item = data_test.data[bidx]
 
-            gt_ref_index = item[0]["command_data"]["box_ix"]
+            gt_ref_index = item["gt_ref_obj_ix_frame_data"]
             gt_ref_box_coords = frame_data['map_objects_bbox'][gt_ref_index]
             gt_ref_box_coords_frontal = frame_data['image_objects_bbox'][gt_ref_index]
 
@@ -290,10 +290,10 @@ def main(args):
 
 
             # Detected Ref Object - 3D
-            detection_sample_index = data_test.command_index_mapping[item[0]["command_token"]]
-            detection_boxes = data_test.box_data[detection_sample_index]
+            # detection_sample_index = data_test.command_index_mapping[item[0]["command_token"]]
+            # detection_boxes = data_test.box_data[detection_sample_index]
             cam_intrinsic = frame_data["cam_intrinsic"]
-            corners_3d_front = detection_boxes["3d_boxes_corners_front"]
+            corners_3d_front = item["frontal_pred_box_corners"]
             if not isinstance(corners_3d_front, torch.Tensor):
                 corners_3d_front = torch.from_numpy(np.array(corners_3d_front)).float()
             num_bbox = corners_3d_front.shape[0]
