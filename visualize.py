@@ -7,17 +7,20 @@ import json
 from PIL import Image, ImageEnhance
 from PIL import ImageDraw
 import numpy as np
-
+dataset = "val"
+sample_ix = 1
 #train samples
-train = json.load(open("./data/talk2car_destination_train.json", "r"))
+ds = json.load(open(f"./data/talk2car_destination_{dataset}.json", "r"))
 
+# command = [x for x in ds.values() if x["command"] == "take a left to follow the grey car"]
 # Look for sample with frontal_img train_0.jpg
-sample_annos = [x for x in train.values() if x[0]["image"] == "train_0.jpg"][0]
-sample = sample_annos[0]
+# sample = [x for x in ds.values() if x["image"] == f"{dataset}_{image_ix}.jpg"][0]
+sample = list(ds.values())[sample_ix]
+# sample = sample_annos
 
 # Load images
-img = Image.open("./example/train_0.jpg").convert("RGB")
-top_down = Image.open("./example/top_down_train_0.png").convert("RGB")
+img = Image.open(f"./data/imgs/img_{sample['image']}").convert("RGB")
+top_down = Image.open(f"./data/top_down/{sample['top-down']}").convert("RGB")
 
 drw = ImageDraw.Draw(img)
 drw_top = ImageDraw.Draw(top_down)
@@ -53,9 +56,7 @@ drw_top.polygon(
 )
 
 # Draw annotations on top down
-for k in range(len(sample_annos)):
-    x1 = int(sample_annos[k]["destination"][0])
-    y1 = int(sample_annos[k]["destination"][1])
+for (x1, y1) in sample["destinations"]:
     color = (255, 0, 255)
     x2 = int(x1 + 3)
     y2 = int(y1 + 3)
