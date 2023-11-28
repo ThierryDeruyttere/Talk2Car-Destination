@@ -32,7 +32,7 @@ Each json from the dataset is a dictionary where the key is the command token an
 1. Download top-down images [here](https://drive.google.com/file/d/1lrgghIVYPxCboZ77eTO8cdFcm_6mcZga/view?usp=sharing) and put the images in the data folder.
 2. Download the frontal images [here](https://drive.google.com/file/d/1NkZB1yCya8yW1X326f28GqQRcxsDmXBa/view?usp=sharing) and put the images in the data folder.
 3. Download the frame data [here](https://drive.google.com/file/d/1bLc_2T-KOyHLlD5TZ7XF8c4nZQntZEuk/view?usp=sharing) and put the frame_data folder in the data folder.
-4. Download the Talk2Car-Destination dataset [here](https://drive.google.com/file/d/1DS8_90IPm81oeFHnjUGleeFitCnWXH7E/view?usp=share_link) and put all files in the data folder. We also include pre-extracted commmand embeddings with a Sentence-BERT model in the .h5 files in this zip.
+4. Download the Talk2Car-Destination dataset [here](https://drive.google.com/file/d/1xNECDDTEDA2rV0lkHhPDsUHG7OvO4aFs/view?usp=sharing) and put all files in the data folder. We also include pre-extracted commmand embeddings with a Sentence-BERT model in the .h5 files in this zip.
 5. Run `visualize.py` to visualize a sample of the dataset
 
 # Integration with Talk2Car
