@@ -1,0 +1,2192 @@
+<html>
+
+<head>
+  <title>Annotate objects in images</title>
+  <!-- easyturk depends on these libraries -->
+  <script src='https://cdnjs.cloudflare.com/ajax/libs/jquery/2.1.1/jquery.min.js'></script>
+  <script src='https://cdnjs.cloudflare.com/ajax/libs/json3/3.3.2/json3.min.js'></script>
+
+  <!-- end of required libraries -->
+  <script src='https://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.min.js'></script>
+  <script src='https://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.6.0/underscore-min.js'></script>
+  <link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css" rel="stylesheet">
+  <script src='https://cdnjs.cloudflare.com/ajax/libs/backbone.js/1.1.2/backbone-min.js'></script>
+  <script src=https://cdnjs.cloudflare.com/ajax/libs/mathjs/3.3.0/math.min.js></script>
+  <script src="https://cdn.jsdelivr.net/gh/nicolaspanel/numjs@0.15.1/dist/numjs.min.js"></script>
+
+  <style>
+    .obj-btn {
+      margin-top: 20px;
+      margin-top: 20px;
+      font-size: 15pt;
+    }
+
+    .obj-name {
+      font-size: 20pt;
+      width: 500px;
+      margin-top: 20px;
+      margin-top: 20px;
+      margin-bottom: 10px;
+      height: 50px;
+    }
+
+    #button-div {
+      margin-bottom: 10px;
+    }
+
+    #counter {
+      margin: 0 10px;
+      font-size: 20pt;
+      font-weight: bold;
+    }
+
+    .desc {
+      font-size: 12pt;
+    }
+  </style>
+
+</head>
+
+<style type='text/css'>
+  .my-legend .legend-title {
+    text-align: left;
+    margin-bottom: 5px;
+    font-weight: bold;
+    font-size: 90%;
+  }
+
+  .my-legend .legend-scale ul {
+    margin: 0;
+    margin-bottom: 5px;
+    padding: 0;
+    float: left;
+    list-style: none;
+  }
+
+  .my-legend .legend-scale ul li {
+    font-size: 80%;
+    list-style: none;
+    margin-left: 0;
+    line-height: 18px;
+    margin-bottom: 2px;
+  }
+
+  .my-legend ul.legend-labels li span {
+    display: block;
+    float: left;
+    height: 16px;
+    width: 30px;
+    margin-right: 5px;
+    margin-left: 0;
+    border: 1px solid #999;
+  }
+
+  .my-legend .legend-source {
+    font-size: 70%;
+    color: #999;
+    clear: both;
+  }
+
+  .my-legend a {
+    color: #777;
+  }
+
+  p {
+    margin-bottom: 0em;
+    margin-top: 0em;
+  }
+</style>
+
+<body>
+  <div class='container'>
+    <h4><b>Draw a path for the car in order to execute the command</b></h4>
+
+    <!-- <div class="container">
+      <h3>Your task is below</h3>
+    </div>
+    <div class='container-fluid'> -->
+
+    <div class='row'>
+      <div class='col-xs-7 text-center'>
+        <div id='image-container'>
+          <img style='width:100%; height:auto; position:absolute; z-index:1;' id='frontal-view'>
+          <canvas class="video" id="frontal-view-canvas" style="position:relative; z-index:20;">
+          </canvas>
+        </div>
+        <div style="margin-top:1em">
+          <!-- <div class="col-xs-2">
+              <button class='play-button'>Play</button>
+            </div>
+            <div class="col-xs-10">
+              <input type='range' min='1' max='100' value='50' className='slider' id='video-slider'>
+            </div> -->
+        </div>
+      </div>
+
+      <div class='col-xs-5 text-center'>
+        <div id='top-down-container'>
+          <img style='width:100%; height:auto; position:absolute;z-index:1;' id='top-down-view-hidden'>
+          <canvas class="video" id="top-down-view" style="position:relative; z-index:20;">
+          </canvas>
+        </div>
+        To remove points, hover over the point you want to delete and press <b>d</b>.
+
+      </div>
+    </div>
+
+    <div class='col-xs-8'>
+      <div id="command-div"
+        style="font-size:16; font-style:normal; background-color: #cfc; border: 1px solid green;  width:100%;">
+      </div>
+      <div id='instructions'
+        style="font-size:10; font-style:normal; background-color: #e7ca94; border: 1px solid green; width:100%;">
+        <b style="color: red; font-size:16px">Attention: Do not zoom with ctrl/command + or ctrl/command - on this page!</b>
+        <br />
+        <b style="font-size:16px">Instructions</b>
+        <br />
+        You are driving around in a self-driving car. At a certain point, you give a command that refers to a specific
+        object (yellow bounding box) to the car.
+        We want you to do the following (<b>a video with instructions can also be found <a style="font-size:12px;"
+            href="https://youtu.be/hTOwduXb1bU">here</a></b>):
+        <!--<p style="color: #2e6c80; font-size:12;"><b>Task:</b></p>-->
+        <ul>
+          <li>
+            Indicate the path in the <b>map view (right)</b> that you want the car to take in order to execute the
+            command that is visible in the green box below the <b>camera view (left)</b>.
+          </li>
+          <li>
+            <b>Check the map legend!</b> Paths that drastically violate traffic rules (e.g. driving in pedestrian
+            area) will be <b>potentially rejected</b> post annotation.
+          </li>
+          <li>
+            Indicate the actions that the car should take in the checkboxes on the bottom right.
+          </li>
+          <li>
+            Indicate if the taken path/command is legal.
+          </li>
+
+          <li>
+            The object that the command refers to is indicated with a <b>yellow 3D bounding box</b> in the camera view
+            and a <b>yellow 2D bounding box</b> in the map view. &nbsp;
+          </li>
+          <li>
+            <b>You can only submit after specifying the path, legality, and at least one action in every frame.</b>
+          </li>
+        </ul>
+        <p style="color: #2e6c80; font-size:12;"><b>How to use the tool:</b></p>
+        <ul>
+          <li>
+            Hovering over the 2D bounding box in the map view highlights the corresponding 3D bounding box in the
+            camera view. &nbsp;
+          </li>
+          <li>
+            Use the <b>left mouse click</b> on the map on the right to define the nodes of the path that the car needs
+            to traverse in order to execute the command. &nbsp;
+          </li>
+          <li> The car orientation is indicated by the blue start node (in front of the hood). Do not draw nodes outside
+            of the view of the car (e.g. behind it). </li>
+          <li>
+            To delete a path node that you have already specified, hover over the point until it is highlighted and
+            press the <span style=font-size:11px><b>"d"</b></span> key. &nbsp;
+          </li>
+          <li>
+            To move a path node that you have already specified, hover over the point until it is highlighted and
+            <b>drag it using the left mouse click</b>. &nbsp;
+          </li>
+          <li>
+            Indicate whether the path is possible or impossbile in the checkboxes on the lower right. &nbsp;
+          </li>
+          <li>
+            After drawing an adequate path, click on the <b>"Next"</b> button to move on to the next frame. &nbsp;
+          </li>
+          <li>
+            After annotating all the frames, click on the <b>"Submit"</b> button to complete the task. &nbsp;
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <div class='col-xs-2'>
+      <div class='legend-title'><b>Actions:</b></div>
+      <div>
+        <input id="actionLeft" type="checkbox" name="actionLeft" />
+        <label for="actionLeft" style="font-size:10;">Turn Left</label>
+      </div>
+      <div>
+        <input id="actionRight" type="checkbox" name="actionRight" />
+        <label for="actionRight" style="font-size:10;">Turn Right</label>
+      </div>
+      <div>
+        <input id="actionChangeLaneLeft" type="checkbox" name="actionChangeLaneLeft" />
+        <label for="actionChangeLaneLeft" style="font-size:10;">Change Lane Left</label>
+      </div>
+      <div>
+        <input id="actionChangeLaneRight" type="checkbox" name="actionChangeLaneRight" />
+        <label for="actionChangeLaneRight" style="font-size:10;">Change Lane Right</label>
+      </div>
+      <div>
+        <input id="actionULeft" type="checkbox" name="actionULeft" />
+        <label for="actionULeft" style="font-size:10;">U-Turn Left</label>
+      </div>
+      <div>
+        <input id="actionURight" type="checkbox" name="actionURight" />
+        <label for="actionURight" style="font-size:10;">U-Turn Right</label>
+      </div>
+      <div>
+        <input id="actionPark" type="checkbox" name="actionPark" />
+        <label for="actionPark" style="font-size:10;">Park</label>
+      </div>
+      <div>
+        <input id="actionStop" type="checkbox" name="actionStop" />
+        <label for="actionStop" style="font-size:10;">Stop</label>
+      </div>
+      <div>
+        <input id="actionFollow" type="checkbox" name="actionFollow" />
+        <label for="actionFollow" style="font-size:10;">Follow</label>
+      </div>
+      <div>
+        <input id="actionSlowDown" type="checkbox" name="actionSlowDown" />
+        <label for="actionSlowDown" style="font-size:10;">Slow Down</label>
+      </div>
+      <div>
+        <input id="actionOther" type="checkbox" name="actionOther" />
+        <label for="actionOther" style="font-size:10;">Other</label>
+        <input type="text" id="actionOtherText" name="actionOtherText" placeholder="Which other..." />
+      </div>
+    </div>
+
+    <div class='col-xs-2'>
+      <div class='legend-title'><b>This path is:</b></div>
+      <div>
+        <input id="legalityLegal" type="radio" name="legality" value="legal" />
+        <label for="legalityLegal" style="font-size:10;">Legal/Possible</label>
+      </div>
+      <div>
+        <input id="legalityIllegal" type="radio" name="legality" value="illegal" />
+        <label for="legalityIllegal" style="font-size:10;">Illegal/Impossible</label>
+      </div>
+
+      <div class='my-legend'>
+        <div class='legend-title'>Map Legend:</div>
+        <div class='legend-scale'>
+          <ul class='legend-labels'>
+            <li><span style='background:#c0dce3;'></span>Drivable Area</li>
+            <li><span style='background:#7db1cb;'></span>Road Segment</li>
+            <li><span style='background:#87c587;'></span>Lane</li>
+            <li><span style='background:#ebc2be;'></span>Pedestrian Crossing</li>
+            <li><span style='background:#ea8586;'></span>Walkway</li>
+            <li><span style='background:#fddeb6;'></span>Stop Lane</li>
+            <li><span style='background:#edb571;'></span>Carpark Area</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class='my-legend'>
+        <div class='legend-title'>Tasks:</div>
+        <div class='legend-scale'>
+          <ul class='legend-labels'>
+            <li>
+              <input type="text" id="task_path" value="Drawn path" style="font-weight:bold;" readonly>
+            </li>
+            <li>
+              <input type="text" id="task_action" value="Indicated action" style="font-weight:bold;" readonly>
+            </li>
+            <li>
+              <input type="text" id="task_feasibility" value="Indicated feasibility" style="font-weight:bold;" readonly>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  </div>
+
+  </div>
+  </div>
+
+  <div class='row'>
+    <div class='col-xs-12 text-center' id='button-div'>
+      <button id='prev-btn' tabindex="1" class='btn btn-lg btn-primary' disabled>Back</button>
+      <span id='counter'>
+        <span class='counter-top'></span> / <span class='counter-bottom'></span>
+      </span>
+      <button id='next-btn' tabindex="0" class='btn btn-lg btn-primary' disabled>Next</button>
+    </div>
+  </div>
+
+  </div>
+  </div>
+
+
+  <!--IMPORTANT: This import contains all the functions you need to read in your input data and send back worker outputs.-->
+  <script type='text/json' id='input'>
+  
+</script>
+<form id='results-form' method='post' action='dummy' class='text-center'>
+  <input type='hidden' value='' name='assignmentId' id='assignmentId'/>
+  <input type='hidden' value='' name='output' id='output'/>
+  <input type='submit' class='btn btn-lg btn-success' id='submit-btn' value='Submit' disabled/>          
+</form>
+<script>
+  var easyturk = (function() {
+    
+    // Copied from http://james.padolsey.com/javascript/bujs-1-getparameterbyname/
+    function getUrlParam(name) {
+      var match = RegExp('[?&]' + name + '=([^&]*)').exec(window.location.search);
+      return match ? decodeURIComponent(match[1].replace(/\+/g, ' ')) : null;
+    }
+
+    function getInput(default_input) {
+      if (typeof(default_input) === 'undefined') default_input = null;
+      try {
+        return JSON.parse($('#input').html());
+      } catch (e) {
+        return default_input;
+      }
+    }
+
+    function setOutput(output) {
+      $('#output').val(JSON.stringify(output));
+    }
+
+    function isPreview() {
+      return false;
+      var assignment_id = getUrlParam('assignmentId');
+      if (assignment_id === null) return false;
+      return assignment_id == 'ASSIGNMENT_ID_NOT_AVAILABLE';
+    }
+
+    function setupSubmit() {
+      var submit_to = getUrlParam('turkSubmitTo');
+      $('#results-form').attr('action', submit_to + '/mturk/externalSubmit');                      
+      $('#assignmentId').val(getUrlParam('assignmentId'));
+    }
+
+    return {
+      getInput: getInput,
+      setOutput: setOutput,
+      isPreview: isPreview,
+      setupSubmit: setupSubmit,
+    }
+
+  })();
+</script>
+
+  <script>
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+    var DEFAULT_INPUT = [
+      //        {"url": "https://t2c-path.s3.eu-west-3.amazonaws.com/imgs/frontal_train_7946.jpg", "top-down": "https://t2c-path.s3.eu-west-3.amazonaws.com/imgs/top_down_train_7946.png", "command_data": {"split": "train", "scenes": "scene-0706", "command": "get in the same lane as the black car.", "command_ix": 7946, "command_token": "3f030a6472573b9825c74620b5aba49b", "box_ix": 12}, "frame_data_url": "https://t2c-path.s3.eu-west-3.amazonaws.com/files/frame_train_7946_data.json"}
+      // ,
+      // {
+      //   "url": "https://t2c-path.s3.eu-west-3.amazonaws.com/imgs/frontal_train_3903.jpg",
+      //   'top-down': "https://t2c-path.s3.eu-west-3.amazonaws.com/imgs/top_down_train_3903.png",
+      //   'command_data': { "split": "train", "scenes": "scene-0278", "command": "park behind that car just ahead of us.", "command_ix": 3903, "command_token": "32dd8dce54d189daea34723ef62134dd", "box_ix": 0 },
+      //   "frame_data_url": "https://t2c-path.s3.eu-west-3.amazonaws.com/files/frame_train_3903_data.json"
+      // },
+      // {
+      //   'url': 'https://t2c-path.s3.eu-west-3.amazonaws.com/imgs/frontal_train_1.jpg',
+      //   'top-down': "https://t2c-path.s3.eu-west-3.amazonaws.com/imgs/top_down_train_1.png",
+      //   "command_data": { "split": "train", "scenes": "scene-0730", "command": "there he is, follow that white car!", "command_ix": 1, "command_token": "238a06b5d8376d27f6bffe13f8ded393", "box_ix": 14 },
+      //   "frame_data_url": "https://t2c-path.s3.eu-west-3.amazonaws.com/files/frame_train_1_data.json"
+      // },
+      { "url": "https://t2c-path.s3.eu-west-3.amazonaws.com/imgs/frontal_train_580.jpg", "top-down": "https://t2c-path.s3.eu-west-3.amazonaws.com/imgs/top_down_train_580.png", "command_data": { "split": "train", "scenes": "scene-0522", "command": "keep following the car in front of us. ", "command_ix": 580, "command_token": "ea6dc5cc49c08163d11a1f159479899e", "box_ix": 0 }, "frame_data_url": "https://t2c-path.s3.eu-west-3.amazonaws.com/files/frame_train_580_data.json" }, { "url": "https://t2c-path.s3.eu-west-3.amazonaws.com/imgs/frontal_test_2242.jpg", "top-down": "https://t2c-path.s3.eu-west-3.amazonaws.com/imgs/top_down_test_2242.png", "command_data": { "split": "test", "scenes": "scene-0784", "command": "park behind that first car that is parked in the street ahead of us. ", "command_ix": 2242, "command_token": "236296ffb6005d02e56ed29f9a9cbac1", "box_ix": 9 }, "frame_data_url": "https://t2c-path.s3.eu-west-3.amazonaws.com/files/frame_test_2242_data.json" }, { "url": "https://t2c-path.s3.eu-west-3.amazonaws.com/imgs/frontal_train_1915.jpg", "top-down": "https://t2c-path.s3.eu-west-3.amazonaws.com/imgs/top_down_train_1915.png", "command_data": { "split": "train", "scenes": "scene-0357", "command": "park beside the construction vehicle", "command_ix": 1915, "command_token": "dab73f66a65ccc40cf068c685cee839e", "box_ix": 18 }, "frame_data_url": "https://t2c-path.s3.eu-west-3.amazonaws.com/files/frame_train_1915_data.json" }
+      // {
+      //   'url': 'https://t2c-path.s3.eu-west-3.amazonaws.com/imgs/frontal_train_2.jpg',
+      //   'top-down': "https://t2c-path.s3.eu-west-3.amazonaws.com/imgs/top_down_train_2.png",
+      //   "command_data": {"split": "train", "scenes": "scene-0730", "command": "go! catch up to him!", "command_ix": 2, "command_token": "7e2643445364fcd7fde611f9829e46ff", "box_ix": 9},
+      //   "frame_data": "https://t2c-path.s3.eu-west-3.amazonaws.com/files/frame_train_2_data.json"
+      // }
+    ];
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+    $(document).ready(function () {
+      var keyCodes = [61, 107, 173, 109, 187, 189];
+
+      $(document).keydown(function (event) {
+        if (event.ctrlKey == true && (keyCodes.indexOf(event.which) != -1)) {
+          event.preventDefault();
+        }
+        if (event.metaKey == true && (keyCodes.indexOf(event.which) != -1)) {
+          event.preventDefault();
+        }
+      });
+
+    });
+
+    // If this is a HIT on AMT, then replace the default input with the real input.
+    var input = easyturk.getInput(DEFAULT_INPUT);
+    var num_images = input.length;
+
+    // Some variables to track state of the HIT.
+    var idx = 0;
+    var enabled = false;
+    var output = [];
+    var bb = null;
+
+    var play = false;
+
+    var createdAnnotationsOutputList = [];
+
+    function main() {
+
+      // Enable the UI if the HIT is not in preview mode.
+      if (true || !easyturk.isPreview()) {
+        enable_hit();
+      }
+
+      // Set up empty description blobs.
+      for (var k = 0; k < num_images; k++) {
+        input[k].objects = [];
+        for (var l = 0; l < input[k].num_objects; l++) {
+          input[k].objects.push({ 'name': '', 'rect': null });
+        }
+        output.push(input[k]);
+      }
+
+      // Load the images.
+      _.each(output, function (input_elem) {
+        var imgUrl = input_elem['url'];//.replace(`_ix`, `_${input[idx]["command_data"]['num_frames']}`);
+        var img = new Image();
+        img.onload = function () {
+          output[idx].image_width = img.width;
+        };
+        img.src = imgUrl;
+
+      });
+
+      $.ajaxSetup({
+        async: false
+      });
+      // Fetch the frame data
+      _.each(input, function (input_elem) {
+        console.log(input_elem["frame_data_url"])
+
+        $.getJSON(input_elem["frame_data_url"], function (data) {
+          console.log(data);
+          input_elem["frame_data"] = data
+        })
+      })
+      console.log(input)
+      $.ajaxSetup({
+        async: true
+      });
+
+      // Render the objects and the bounding box interaction.
+      set_idx(idx, true);
+    }
+
+    function add_existing_boxes(bb) {
+      /** Draws the existing bounding boxes to the image.
+       *
+       * Args:
+       *   bb: ETJS.BBoxDrawer instance.
+       */
+      for (var k = 0; k < output[idx].num_objects; k++) {
+        obj = output[idx].objects[k];
+        if (obj.rect != null) {
+          index = bb.addStaticBox(obj.rect);
+          obj.static_index = index;
+        }
+      }
+    }
+
+    // For transform to image and map
+    var egopose_translation;
+    var egopose_rotmat;
+    var cam_translation;
+    var cam_rotmat;
+    var cam_intrinsics;
+    var map_patch;
+    var canvasFrontal;
+    var frontalViewRatioW;
+    var frontalViewRatioH;
+
+    // Use the current index to update the image and description.
+    function render() {
+      // Set up the image
+      //$('#image-container').empty();
+      //$('#top-down-container').empty();
+      // play = false;
+      $("#frontal-view").attr('src', input[idx]['url']);//.replace(`_ix`, `_${input[idx]["command_data"]['num_frames']}`));
+      console.log($("#frontal-view"));
+      //$("<button class='play-button'></button>").appendTo($('#image-container'));
+
+      // $("#video-slider").attr("max", input[idx]["command_data"]["num_frames"]).attr("value", input[idx]["command_data"]["num_frames"]);
+
+      $("#top-down-view-hidden").attr('src', input[idx]['top-down']);//.replace(`_ix`, `_${input[idx]["command_data"]['num_frames']}`));
+
+      // Top Down View
+      var image = new Image();
+      image.onload = function () {
+        drawImage(image);
+      }
+      image.src = input[idx]['top-down']//.replace(`_ix`, `_${input[idx]["command_data"]['num_frames']}`);
+
+      $("#command-div").text("Command: " + input[idx]['command_data']["command"])
+      // Frontal Image
+      var imageFrontal = new Image();
+      imageFrontal.onload = function () {
+        canvasFrontal = document.getElementById('frontal-view-canvas');
+        canvasFrontal.width = $("#frontal-view").width();
+        canvasFrontal.height = $("#frontal-view").height();
+        frontalViewRatioW = (canvasFrontal.width / 1600);
+        frontalViewRatioH = (canvasFrontal.height / 900);
+      }
+      imageFrontal.src = input[idx]['url'];//.replace(`_ix`, `_${input[idx]["command_data"]['num_frames']}`);
+
+
+      egopose_translation = math.matrix([input[idx]["frame_data"]["ego_translation"]])
+      egopose_rotmat = math.matrix(input[idx]["frame_data"]["ego_rotation"])
+      cam_translation = math.matrix([input[idx]["frame_data"]["cam_translation"]])
+      cam_rotmat = math.matrix(input[idx]["frame_data"]["cam_rotation"]);
+      cam_intrinsics = math.matrix(input[idx]["frame_data"]["cam_intrinsic"]);
+      map_patch = math.matrix(input[idx]["frame_data"]["map_patch"]);
+
+      first_run = true;
+      is_drawing_car_end_point = false;
+      not_alerted = true;
+
+      // Set up the input text field
+      // $('#caption').val(captions[idx]);
+
+      // Refresh the counter
+      $('.counter-top').text(idx + 1);
+      $('.counter-bottom').text(input.length);
+
+      // If the UI is enabled, enable or disable the buttons depending on
+      // the index.
+      if (enabled) {
+        $('#prev-btn').prop('disabled', false);
+        $('#next-btn').prop('disabled', false);
+        if (idx == 0) {
+          $('#prev-btn').prop('disabled', true);
+        }
+        if (idx == input.length - 1) {
+          $('#next-btn').prop('disabled', true);
+        }
+      }
+    }
+
+    hRatio = null;
+    vRatio = null;
+    function drawImageScaled(img, ctx) {
+      var canvasTopDown = ctx.canvas;
+      hRatio = canvasTopDown.width / img.width;
+      vRatio = canvasTopDown.height / img.height;
+      ratio = Math.min(hRatio, vRatio);
+      var centerShift_x = (canvasTopDown.width - img.width * ratio) / 2;
+      var centerShift_y = (canvasTopDown.height - img.height * ratio) / 2;
+      ctx.clearRect(0, 0, canvasTopDown.width, canvasTopDown.height);
+      ctx.drawImage(img, 0, 0, img.width, img.height,
+        centerShift_x, centerShift_y, img.width * ratio, img.height * ratio);
+    }
+
+    function drawImage(image) {
+      canvasTopDown = document.getElementById('top-down-view');
+      // topDownCtx = canvasTopDown.getContext('2d');
+
+      canvasTopDown.width = $("#top-down-view-hidden").width();
+      canvasTopDown.height = $("#top-down-view-hidden").height();//image.height;
+      //onsole.log(canvasTopDown.width, canvasTopDown.height);
+
+      topDownCtx = canvasTopDown.getContext("2d");
+      $canvasTopDown = $("#top-down-view");
+      canvasTopDownOffset = $canvasTopDown.offset();
+      canvasTopDownOffsetX = canvasTopDownOffset.left;
+      canvasTopDownOffsetY = canvasTopDownOffset.top;
+      scrollX = $canvasTopDown.scrollLeft();
+      scrollY = $canvasTopDown.scrollTop();
+
+      canvasTopDownW = canvasTopDown.width;
+      canvasTopDownH = canvasTopDown.height;
+      canvasTopDownCw = canvasTopDownW / 2;  // center
+      canvasTopDownCh = canvasTopDownH / 2;
+
+    }
+
+    // $(document).on('change', "#video-slider", function (e) {
+    //   var currIx = $(this).val()
+    //   //var referred_frame = input[idx]["command_data"]['num_frames'];
+    //   $("#frontal-view").attr('src', input[idx]['url'].replace(`_ix`, `_${currIx}`));
+    //   // $("#top-down-view-hidden").attr('src', input[idx]['top-down'].replace(`_ix`, `_${currIx}`));
+    //   // var image = new Image();
+    //   // image.onload = function () {
+    //   //   drawImage(image);
+    //   // }
+    //   // image.src = input[idx]['top-down'].replace(`_ix`, `_${currIx}`);
+
+    // })
+
+    // $(document).on('click', ".play-button", function (e) {
+    //   if (play) {
+    //     $(this).text("Play");
+    //     play = false
+    //   } else {
+    //     $(this).text("Pause");
+    //     play = true
+    //     playVideo();
+    //   }
+    // })
+
+    // function playVideo() {
+
+    //   var currImg = $("#video-slider").val();
+    //   var maxImg = input[idx]["command_data"]['num_frames'];
+
+    //   function changeImgs() {
+    //     if (currImg <= maxImg) {
+    //       $("#video-slider").attr("value", currImg);
+    //       $("#video-slider").trigger("change");
+    //       currImg += 1;
+    //       if (play) {
+    //         setTimeout(changeImgs, 100);
+    //       }
+    //     } else {
+    //       $(".play-button").click();
+    //     }
+    //   }
+    //   setTimeout(changeImgs, 100);
+
+    // }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+    var canvasTopDownOffsetX;
+    var canvasTopDownOffsetY;
+
+    var canvasTopDown;
+    var topDownCtx;
+
+    const Point2 = (x, y) => ({ x, y });  // creates a point
+    const Line = (p1, p2) => ({ p1, p2 });
+    const setStyle = (style) => eachOf(Object.keys(style), key => { topDownCtx[key] = style[key] });
+    const eachOf = (array, callback) => { var i = 0; while (i < array.length && callback(array[i], i++) !== true); };
+
+    const list = {
+      items: null,
+      length() { return this.items.length },
+      add(item) { this.items.push(item); return item },
+      eachItem(callback) {
+        var i = 0;
+        while (i < this.items.length) {
+          callback(this.items[i], i++);
+        }
+      }
+    }
+
+    function __drawLine(start, end, color = "rgba(205,50,50,1)") {
+      var canvasFrontal = document.getElementById('frontal-view-canvas')
+      var context = canvasFrontal.getContext('2d');
+      context.lineWidth = 2;
+      context.strokeStyle = color;
+      context.beginPath();
+      context.moveTo(start[0] / 1600 * canvasFrontal.width, (start[1] / 900) * canvasFrontal.height);
+      context.lineTo(end[0] / 1600 * canvasFrontal.width, (end[1] / 900) * canvasFrontal.height);
+      context.stroke();
+    }
+
+    function __drawRect(selectedCorners, color = "rgba(205,50,50,1)") {
+      var prev = selectedCorners[selectedCorners.length - 1];
+      for (var i = 0; i < selectedCorners.length; i++) {
+        var corner = selectedCorners[i];
+        this.__drawLine([parseInt(prev[0]), parseInt(prev[1])],
+          [parseInt(corner[0]), parseInt(corner[1])],
+          color);
+        prev = corner;
+      }
+    }
+
+    function drawBox(box_points, color = "rgba(205,50,50,1)") {
+      // Draw the sides;
+      box_points = box_points[0].map((_, colIndex) => box_points.map(row => row[colIndex]));
+      for (var i = 0; i < 4; i++) {
+        __drawLine([parseInt(box_points[i][0]), parseInt(box_points[i][1])],
+          [parseInt(box_points[i + 4][0]), parseInt(box_points[i + 4][1])],
+          color);
+      }
+      __drawRect(box_points.slice(0, 4), color);
+      __drawRect(box_points.slice(4, 8), color);
+    }
+
+    function drawObjectsFrontal(special_index = -1) {
+      var objectsToDraw = input[idx]["frame_data"]["image_objects_bbox"];
+      var referredObjectIx = input[idx]["command_data"]["box_ix"];
+
+      for (var i = 0; i < objectsToDraw.length; i++) {
+        //console.log(objectsToDraw[i])
+        //var is_referred = objectsToDraw[i]["is_referred"];
+
+        if (i == special_index) {
+          color = "rgba(205,50,50,1)";
+        } else if (i == referredObjectIx) {
+          color = "rgba(255,226,0,1)";
+        } else {
+          // Set opacity to 0 to make it transparent
+          color = "rgba(47,79,79,0)";
+        }
+
+        var box = math.transpose(math.matrix(objectsToDraw[i]))._data; // 2 x 8 matrix , first row is x, second is y
+        drawBox(box, color);
+      }
+    }
+
+    function drawObjectsTopDown(special_index = -1) {
+      var objectsToDraw = math.matrix(input[idx]["frame_data"]["map_objects_bbox"]);
+
+      // Step 1: Convert points to canvas coords
+
+      var map_patch_corner_x = map_patch.subset(math.index(0))
+      var map_patch_corner_y = map_patch.subset(math.index(1))
+      var map_patch_width = map_patch.subset(math.index(2)) - map_patch.subset(math.index(0))
+      var map_patch_height = map_patch.subset(math.index(3)) - map_patch.subset(math.index(1))
+
+      var canvasTopDown_width = canvasTopDown.width;
+      var canvasTopDown_height = canvasTopDown.height;
+
+      var x = objectsToDraw.subset(math.index(math.range(0, objectsToDraw.size()[0]), math.range(0, objectsToDraw.size()[1]), 0));
+      var y = objectsToDraw.subset(math.index(math.range(0, objectsToDraw.size()[0]), math.range(0, objectsToDraw.size()[1]), 1));
+      var converted_x = math.multiply(math.divide(math.subtract(x, map_patch_corner_x), (map_patch_width)), canvasTopDown_width);
+      var converted_y = math.multiply(math.subtract(1, math.divide(math.subtract(y, map_patch_corner_y), (map_patch_height))), canvasTopDown_height);
+      var convertedPoints = math.concat(converted_x, converted_y, 2);
+      //console.log(convertedPoints);
+      // Convert Ego bounding box coords
+      var ego_box = math.matrix(input[idx]["frame_data"]["egobbox"]);
+
+      var ego_x = ego_box.subset(math.index(math.range(0, ego_box.size()[0]), 0));
+      var ego_y = ego_box.subset(math.index(math.range(0, ego_box.size()[0]), 1));
+      var ego_converted_x = math.multiply(math.divide(math.subtract(ego_x, map_patch_corner_x), (map_patch_width)), canvasTopDown_width);
+      var ego_converted_y = math.multiply(math.subtract(1, math.divide(math.subtract(ego_y, map_patch_corner_y), (map_patch_height))), canvasTopDown_height);
+      var rel_x_points = math.subtract(ego_converted_x, math.mean(ego_converted_x));
+      var rel_y_points = math.subtract(ego_converted_y, math.mean(ego_converted_y));
+      var ego_convertedPoints = math.concat(ego_converted_x, ego_converted_y, 1);
+      //console.log(ego_convertedPoints);
+      car_box_format_relative = math.concat(rel_x_points, rel_y_points, 1);
+      // Step 2: Draw points on canvas
+
+      var context = canvasTopDown.getContext('2d');
+      context.lineWidth = 3;
+
+      if (convertedPoints.size()[1] == 4) {
+        convertedPoints = math.concat(
+          convertedPoints,
+          convertedPoints.subset(
+            math.index(
+              math.range(0, convertedPoints.size()[0]),
+              0,
+              math.range(0, convertedPoints.size()[2]))
+          ),
+          1
+        )
+      }
+      var referredObjectIx = input[idx]["command_data"]["box_ix"];
+
+      for (var i = 0; i < convertedPoints.size()[0]; i++) {
+
+        if (i == special_index) {
+          context.strokeStyle = "rgba(205,50,50,1)";
+        } else if (i == referredObjectIx) {
+          context.strokeStyle = "rgba(255,228,0,1)";
+        } else {
+          context.strokeStyle = "rgba(47,79,79,1)";
+        }
+        context.beginPath();
+        // If not closed, close it
+        for (var j = 0; j < convertedPoints.size()[1] - 1; j++) {
+          context.moveTo(
+            math.subset(convertedPoints, math.index(i, j, 0)),
+            math.subset(convertedPoints, math.index(i, j, 1))
+          );
+          context.lineTo(
+            math.subset(convertedPoints, math.index(i, j + 1, 0)),
+            math.subset(convertedPoints, math.index(i, j + 1, 1))
+          )
+        }
+        context.stroke();
+      }
+
+      // Draw ego box
+      context.strokeStyle = "rgba(0,255,215,1)";
+      context.beginPath();
+      if (ego_convertedPoints.size()[0] == 4) {
+        ego_convertedPoints = math.concat(
+          ego_convertedPoints,
+          ego_convertedPoints.subset(
+            math.index(
+              0,
+              math.range(0, ego_convertedPoints.size()[1]))
+          ),
+          0
+        )
+      }
+      for (var i = 0; i < ego_convertedPoints.size()[0] - 1; i++) {
+        context.moveTo(
+          math.subset(ego_convertedPoints, math.index(i, 0)),
+          math.subset(ego_convertedPoints, math.index(i, 1))
+        );
+        context.lineTo(
+          math.subset(ego_convertedPoints, math.index(i + 1, 0)),
+          math.subset(ego_convertedPoints, math.index(i + 1, 1))
+        )
+      }
+
+      center = [
+        math.mean(math.subset(ego_convertedPoints, math.index(math.range(0, 4), 0))),
+        math.mean(math.subset(ego_convertedPoints, math.index(math.range(0, 4), 1)))
+      ]
+
+      context.moveTo(
+        center[0],
+        center[1],
+      )
+      context.lineTo(
+        math.subset(ego_convertedPoints, math.index(0, 0)) / 2 + math.subset(ego_convertedPoints, math.index(1, 0)) / 2,
+        math.subset(ego_convertedPoints, math.index(0, 1)) / 2 + math.subset(ego_convertedPoints, math.index(1, 1)) / 2
+      )
+      context.stroke();
+    }
+
+    function getSidePoints(point1, point2, thickness, farside = true) {
+
+      if (point2[0] - point1[0] == 0) {
+        angle = math.PI / 2;
+      } else {
+        angle = math.atan2(point2[1] - point1[1], point2[0] - point1[0])
+      }
+      if (farside) {
+        target_point = point2
+      } else {
+        target_point = point1
+      }
+      p_right = math.sin(angle) * thickness + target_point[0]
+      q_right = -math.cos(angle) * thickness + target_point[1]
+      p_left = -math.sin(angle) * thickness + target_point[0]
+      q_left = math.cos(angle) * thickness + target_point[1]
+
+      return [[p_left, q_left], [p_right, q_right]]
+    }
+
+    function computePolygonSides(path_points, thickness) {
+
+      polygon_sides_left = []
+      polygon_sides_right = []
+
+      for (i = 1; i < path_points.length; i++) {
+        if (i < path_points.length - 1) {
+          side_points = getSidePoints(path_points[i - 1], path_points[i], thickness, false)
+          polygon_sides_left.push(side_points[0])
+          polygon_sides_right.push(side_points[1])
+        } else {
+          side_points = getSidePoints(path_points[i - 1], path_points[i], thickness, false)
+          polygon_sides_left.push(side_points[0])
+          polygon_sides_right.push(side_points[1])
+          side_points = getSidePoints(path_points[i - 1], path_points[i], thickness, true)
+          polygon_sides_left.push(side_points[0])
+          polygon_sides_right.push(side_points[1])
+        }
+      }
+      polygon_sides_right.reverse()
+      return polygon_sides_left.concat(polygon_sides_right)
+    }
+
+    function projectPathToFrontalView(car_end_point_pos) {
+      // 1) Add 0 to third dimension
+      if (points.items.length < 2 && car_end_point_pos === null) {
+        return;
+      }
+      var points_frontal = math.matrix(points.projectPointsToMap(car_end_point_pos));
+
+      // Convert path points to polygon side points
+      points_frontal = math.matrix(computePolygonSides(points_frontal._data, 1))
+
+      // Pad z-axis with zeros - might be a bad assumption
+      points_frontal = math.concat(points_frontal, math.zeros(points_frontal.size()[0], 1), 1)
+
+      // 2) Subtract egopose translation
+      for (var i = 0; i < points_frontal.size()[0]; i++) {
+        new_point = math.subtract(math.subset(points_frontal, math.index(i, math.range(0, points_frontal.size()[1]))), egopose_translation)
+        points_frontal.subset(math.index(i, math.range(0, points_frontal.size()[1])), new_point)
+      }
+
+      points_frontal = math.transpose(points_frontal)
+
+      // 3) Rotate by egopose rotation matrix
+      points_frontal = math.multiply(math.transpose(egopose_rotmat), points_frontal)
+      points_frontal = math.transpose(points_frontal)
+
+      // 4) Subtract camera translation
+      for (var i = 0; i < points_frontal.size()[0]; i++) {
+        new_point = math.subtract(math.subset(points_frontal, math.index(i, math.range(0, points_frontal.size()[1]))), cam_translation)
+        points_frontal.subset(math.index(i, math.range(0, points_frontal.size()[1])), new_point)
+      }
+      points_frontal = math.transpose(points_frontal)
+
+      // 5) Rotate by camera rotation matrix
+      points_frontal = math.multiply(math.transpose(cam_rotmat), points_frontal)
+      points_frontal = math.transpose(points_frontal)
+      // 6) Map to image view
+      var viewpad = math.matrix(cam_intrinsics)
+      viewpad = math.concat(viewpad, math.zeros(viewpad.size()[0], 1), 1)
+      viewpad = math.concat(viewpad, math.zeros(1, viewpad.size()[1]), 0)
+      viewpad.subset(math.index(3, 3), 1)
+      points_frontal = math.transpose(points_frontal)
+      points_frontal = math.concat(points_frontal, math.ones(1, points_frontal.size()[1]), 0)
+      points_frontal = math.multiply(viewpad, points_frontal)
+      points_frontal = math.subset(points_frontal, math.index(math.range(0, 3), math.range(0, points_frontal.size()[1])))
+      norm = math.subset(points_frontal, math.index(2, math.range(0, points_frontal.size()[1])))
+      norm = math.concat(norm, norm, norm, 0)
+      points_frontal = math.dotDivide(points_frontal, norm)
+      points_frontal = math.subset(points_frontal, math.index(math.range(0, 2), math.range(0, points_frontal.size()[1])))
+      points_frontal = math.transpose(points_frontal)
+      // Finally transform to the canvas
+      points_frontal_x = math.multiply(math.subset(points_frontal, math.index(math.range(0, points_frontal.size()[0]), 0)), frontalViewRatioW);
+      points_frontal_y = math.multiply(math.subset(points_frontal, math.index(math.range(0, points_frontal.size()[0]), 1)), frontalViewRatioH);
+
+      points_frontal = math.concat(points_frontal_x, points_frontal_y, 1);
+
+      return points_frontal;
+    }
+
+    function most_frequent(arr) {
+      var o = {}, maxCount = 0, maxValue, m;
+      for (var i = 0, iLen = arr.length; i < iLen; i++) {
+        m = arr[i];
+
+        if (!o.hasOwnProperty(m)) {
+          o[m] = 0;
+        }
+        ++o[m];
+
+        if (o[m] > maxCount) {
+          maxCount = o[m];
+          maxValue = m;
+        }
+      }
+      return maxValue;
+    }
+
+    function projectElevatedPathToFrontalView() {
+      // 1) Add 0 to third dimension
+      if (points.items.length < 2 && car_end_point_pos === null) {
+        return;
+      }
+
+      // 1) Create polygons in 2D and append z-axis
+      // Scale path points to map coordinates
+
+      var points_map = math.matrix(points.projectPointsToMap(car_end_point_pos));
+
+      // Convert path points to polygon side points
+      points_map = math.matrix(computePolygonSides(points_map._data, 1))
+      //console.log("Points map:", points_map)
+
+      // Scale object points to map coordinates
+      var object_points_map = math.matrix(object_points.projectPointsToMap())
+
+      // Find nearest objects to each path x-y point
+      nearest_z = math.matrix([])
+      for (var i = 0; i < points_map.size()[0]; i++) {
+        var min_distance = 1e10;
+        path_point = math.subset(points_map, math.index(i, math.range(0, points_map.size()[1])))
+        closest_point_elevation = 0.0
+        for (var j = 0; j < object_points_map.size()[0]; j++) {
+          object_point = math.subset(object_points_map, math.index(j, math.range(0, object_points_map.size()[1])))
+          distance = math.sqrt((path_point._data[0][0] - object_point._data[0][0]) ** 2 + (path_point._data[0][1] - object_point._data[0][1]) ** 2);
+
+          if (distance < min_distance) {
+            min_distance = distance
+            closest_point_elevation = object_elevations[j]
+          }
+        }
+        nearest_z = math.concat(nearest_z, [closest_point_elevation], 0)
+      }
+
+      nearest_z = nearest_z.resize([nearest_z.size()[0], 1])
+      //most_common_nearest_z = most_frequent(nearest_z._data)
+      //nearest_z = math.multiply(math.ones(nearest_z.size()[0], 1), most_common_nearest_z)
+      // // Append nearest object points
+      points_map = math.concat(points_map, nearest_z, 1)
+
+
+      // 2) Subtract egopose translation
+      for (var i = 0; i < points_map.size()[0]; i++) {
+        new_point = math.subtract(math.subset(points_map, math.index(i, math.range(0, points_map.size()[1]))), egopose_translation)
+        points_map.subset(math.index(i, math.range(0, points_map.size()[1])), new_point)
+      }
+
+      points_map = math.transpose(points_map)
+
+      // 3) Rotate by egopose rotation matrix
+      points_map = math.multiply(math.transpose(egopose_rotmat), points_map)
+      points_map = math.transpose(points_map)
+      console.log("ego rotation", points_map)
+
+      // 4) Subtract camera translation
+      for (var i = 0; i < points_map.size()[0]; i++) {
+        new_point = math.subtract(math.subset(points_map, math.index(i, math.range(0, points_map.size()[1]))), cam_translation)
+        points_map.subset(math.index(i, math.range(0, points_map.size()[1])), new_point)
+      }
+      points_map = math.transpose(points_map)
+
+      // 5) Rotate by camera rotation matrix
+      //console.log("before",points_map)
+      //console.log("cam rot", cam_rotmat)
+      points_map = math.multiply(math.transpose(cam_rotmat), points_map)
+      points_map = math.transpose(points_map)
+      console.log("after",points_map)
+
+
+      // 6) Map to image view
+      var viewpad = math.matrix(cam_intrinsics)
+      viewpad = math.concat(viewpad, math.zeros(viewpad.size()[0], 1), 1)
+      viewpad = math.concat(viewpad, math.zeros(1, viewpad.size()[1]), 0)
+      viewpad.subset(math.index(3, 3), 1)
+
+
+      points_frontal = math.transpose(points_map)
+      points_frontal = math.concat(points_frontal, math.ones(1, points_frontal.size()[1]), 0)
+      console.log("frontal", points_frontal)
+      points_frontal = math.multiply(viewpad, points_frontal)
+      console.log("points_frontal", points_frontal)
+      points_frontal = math.subset(points_frontal, math.index(math.range(0, 3), math.range(0, points_frontal.size()[1])))
+      console.log("points_subset_frontal", points_frontal)
+
+      norm = math.subset(points_frontal, math.index(2, math.range(0, points_frontal.size()[1])))
+      console.log("norm", norm)
+
+      norm = math.concat(norm, norm, norm, 0)
+      console.log("norm2", norm)
+      console.log("before div", points_frontal)
+
+      points_frontal = math.dotDivide(points_frontal, norm)
+      console.log("after div", points_frontal)
+      points_frontal = math.subset(points_frontal, math.index(math.range(0, 2), math.range(0, points_frontal.size()[1])))
+      points_frontal = math.transpose(points_frontal)
+      // Finally transform to the canvas
+      points_frontal_x = math.multiply(math.subset(points_frontal, math.index(math.range(0, points_frontal.size()[0]), 0)), frontalViewRatioW);
+      points_frontal_y = math.multiply(math.subset(points_frontal, math.index(math.range(0, points_frontal.size()[0]), 1)), frontalViewRatioH);
+
+      points_frontal = math.concat(points_frontal_x, points_frontal_y, 1);
+
+      return points_frontal;
+    }
+
+    function drawPathOnFrontalView(car_end_point_pos) {
+      if (points.items.length < 2 && car_end_point_pos === null) {
+        context = canvasFrontal.getContext('2d');
+        context.clearRect(0, 0, canvasFrontal.width, canvasFrontal.height);
+      }
+      var projectedPoints = projectElevatedPathToFrontalView();
+      if (projectedPoints === undefined) return
+      var context = canvasFrontal.getContext('2d');
+      //context.lineWidth = 3;
+      context.strokeStyle = "rgba(50,205,50,0.75)";
+      context.clearRect(0, 0, canvasFrontal.width, canvasFrontal.height);
+
+
+      for (var i = 0; i < projectedPoints.size()[0] - 1; i++) {
+        context.beginPath();
+        context.moveTo(
+          math.subset(projectedPoints, math.index(i, 0)),
+          math.subset(projectedPoints, math.index(i, 1))
+        );
+        context.lineTo(
+          math.subset(projectedPoints, math.index(i + 1, 0)),
+          math.subset(projectedPoints, math.index(i + 1, 1))
+        );
+        context.stroke();
+      }
+
+    }
+
+    function projectPathToTopDownView(car_end_point_pos) {
+      if (points.items.length < 2 && car_end_point_pos === null) {
+        return;
+      }
+      var points_top_down = []
+      points.eachItem(point => {
+        points_top_down.push([point.x, point.y]);
+      });
+
+      if (car_end_point_pos) {
+        points_top_down.push([car_end_point_pos.x, car_end_point_pos.y])
+      }
+
+      points_top_down = math.matrix(points_top_down);
+      points_top_down = math.matrix(computePolygonSides(points_top_down._data, 5))
+
+      return points_top_down;
+    }
+
+    function drawPathOnTopDownView(car_end_point_pos) {
+      if (points.items.length < 2 && car_end_point_pos === null) {
+        return;
+      }
+      var projectedPoints = projectPathToTopDownView(car_end_point_pos);
+      var context = canvasTopDown.getContext('2d');
+      context.strokeStyle = "rgba(50,205,50,0.75)";
+      context.clearRect(0, 0, canvasTopDown.width, canvasTopDown.height);
+
+      for (var i = 0; i < projectedPoints.size()[0] - 1; i++) {
+        context.beginPath();
+        context.moveTo(
+          math.subset(projectedPoints, math.index(i, 0)),
+          math.subset(projectedPoints, math.index(i, 1))
+        );
+        context.lineTo(
+          math.subset(projectedPoints, math.index(i + 1, 0)),
+          math.subset(projectedPoints, math.index(i + 1, 1))
+        );
+        context.stroke();
+      }
+
+    }
+
+    function projectPointsToMap(car_end_point_pos) {
+      var points_map = [];
+
+      // points are (a,b)
+      // we need to transform them to global view
+      this.eachItem(point => {
+        points_map.push([point.x, point.y]);
+      });
+
+      if (car_end_point_pos) {
+        points_map.push([car_end_point_pos.x, car_end_point_pos.y])
+      }
+
+      var points_map = math.matrix(points_map)
+      var canvasTopDown_size = math.matrix([canvasTopDown.width, canvasTopDown.height]) // Width, Height
+
+      var map_patch_corner_x = map_patch.subset(math.index(0))
+      var map_patch_corner_y = map_patch.subset(math.index(1))
+      var map_patch_width = map_patch.subset(math.index(2)) - map_patch.subset(math.index(0))
+      var map_patch_height = map_patch.subset(math.index(3)) - map_patch.subset(math.index(1))
+
+      var canvasTopDown_width = canvasTopDown_size.subset(math.index(0))
+      var canvasTopDown_height = canvasTopDown_size.subset(math.index(1))
+
+      var x = points_map.subset(math.index(math.range(0, points_map.size()[0]), 0))
+      var y = points_map.subset(math.index(math.range(0, points_map.size()[0]), 1))
+
+      // x_trans = map_patch_x_left + (x * (map_patch_x_right - map_patch_x_left) / canvasTopDown_width )
+      var x_trans = math.add(math.divide(math.multiply(x, map_patch_width), canvasTopDown_width), map_patch_corner_x)
+      // y_trans = map_path_y_bottom + (canvasTopDown_height - y) * (map_patch_y_top - map_patch_y_bottom) / canvasTopDown_height
+      var y_trans = math.add(math.divide(math.multiply(math.subtract(canvasTopDown_height, y), map_patch_height), canvasTopDown_height), map_patch_corner_y)
+      //console.log(points_map);
+      //console.log(points_map.size()[0]);
+      //console.log(x_trans);
+      //console.log(y_trans);
+      if (points_map.size()[0] == 1) {
+        x_trans = math.matrix([[x_trans]]);
+        y_trans = math.matrix([[y_trans]]);
+      }
+      var points_map = math.concat(x_trans, y_trans, 1)
+      return points_map
+    }
+
+    function getMapToCanvas(map_point, map_patch) {
+      var map_patch_corner_x = map_patch.subset(math.index(0))
+      var map_patch_corner_y = map_patch.subset(math.index(1))
+      var map_patch_width = map_patch.subset(math.index(2)) - map_patch.subset(math.index(0))
+      var map_patch_height = map_patch.subset(math.index(3)) - map_patch.subset(math.index(1))
+
+      var canvasTopDown_width = canvasTopDown.width;
+      var canvasTopDown_height = canvasTopDown.height;
+
+      canvas_point_x = math.multiply(math.divide(math.subtract(map_point[0], map_patch_corner_x), (map_patch_width)), canvasTopDown_width);
+      canvas_point_y = math.multiply(math.subtract(1, math.divide(math.subtract(map_point[1], map_patch_corner_y), (map_patch_height))), canvasTopDown_height);
+      return [canvas_point_x, canvas_point_y]
+    }
+
+    function getCanvasToMap(canvas_point, map_patch) {
+      var map_patch_corner_x = map_patch.subset(math.index(0))
+      var map_patch_corner_y = map_patch.subset(math.index(1))
+      var map_patch_width = map_patch.subset(math.index(2)) - map_patch.subset(math.index(0))
+      var map_patch_height = map_patch.subset(math.index(3)) - map_patch.subset(math.index(1))
+
+      var canvasTopDown_width = canvasTopDown.width;
+      var canvasTopDown_height = canvasTopDown.height;
+
+      map_point_x = math.add(math.divide(math.multiply(canvas_point[0], map_patch_width), canvasTopDown_width), map_patch_corner_x)
+      map_point_y = math.add(math.divide(math.multiply(math.subtract(canvasTopDown_height, canvas_point[1]), map_patch_height), canvasTopDown_height), map_patch_corner_y)
+      return [map_point_x, map_point_y]
+    }
+
+    function getPointInFront(center_point, rot_matrix, distance) {
+      // Facing angle in radians
+      facing_angle = math.atan2(
+        math.subset(rot_matrix, math.index(0, 0)),
+        math.subset(rot_matrix, math.index(0, 1))
+      )
+
+      x_front = math.sin(facing_angle) * distance + center_point[0]
+      y_front = -math.cos(facing_angle) * distance + center_point[1]
+
+      front_point = [x_front, y_front]
+      return front_point
+    }
+
+
+    function drawCarOnEndPointTopDownView() {
+      if (points.items.length < 2) {
+        return
+      }
+      var currentCarEndPoint = points.items[points.items.length - 1]
+      var beforeCurrentEndPoint = points.items[points.items.length - 2];
+
+      var convertedPoints = car_box_format_relative
+
+      var orig_angle_x1 = math.subset(car_box_format_relative, math.index(2, 0));
+      var orig_angle_y1 = math.subset(car_box_format_relative, math.index(2, 1));
+      var orig_angle_x2 = math.subset(car_box_format_relative, math.index(1, 0));
+      var orig_angle_y2 = math.subset(car_box_format_relative, math.index(1, 1));
+      var orig_angle;
+      if (orig_angle_x2 - orig_angle_x1 == 0) {
+        orig_angle = math.PI / 2;
+      } else {
+        orig_angle = math.atan2(orig_angle_y2 - orig_angle_y1, orig_angle_x2 - orig_angle_x1)
+      }
+
+      var angle;
+      if (currentCarEndPoint.x - beforeCurrentEndPoint.x == 0) {
+        angle = math.PI / 2;
+      } else {
+        angle = math.atan2(currentCarEndPoint.y - beforeCurrentEndPoint.y, currentCarEndPoint.x - beforeCurrentEndPoint.x)
+      }
+      angle -= orig_angle;
+
+      var rot_matrix = math.matrix([
+        [math.cos(angle), -math.sin(angle)],
+        [math.sin(angle), math.cos(angle)]
+      ])
+      convertedPoints = math.transpose(math.multiply(rot_matrix, math.transpose(convertedPoints)))
+
+      var context = canvasTopDown.getContext('2d');
+      context.lineWidth = 3;
+      context.strokeStyle = "rgba(0,255,215,1)";
+      context.beginPath();
+
+
+      for (var i = 0; i < convertedPoints.size()[0] - 1; i++) {
+        context.moveTo(
+          currentCarEndPoint.x + math.subset(convertedPoints, math.index(i, 0)),
+          currentCarEndPoint.y + math.subset(convertedPoints, math.index(i, 1))
+        )
+        context.lineTo(
+          currentCarEndPoint.x + math.subset(convertedPoints, math.index(i + 1, 0)),
+          currentCarEndPoint.y + math.subset(convertedPoints, math.index(i + 1, 1))
+        )
+      }
+
+      context.moveTo(
+        currentCarEndPoint.x + math.subset(convertedPoints, math.index(convertedPoints.size()[0] - 1, 0)),
+        currentCarEndPoint.y + math.subset(convertedPoints, math.index(convertedPoints.size()[0] - 1, 1))
+      )
+      context.lineTo(
+        currentCarEndPoint.x + math.subset(convertedPoints, math.index(0, 0)),
+        currentCarEndPoint.y + math.subset(convertedPoints, math.index(0, 1))
+      )
+
+      // Draw car nose
+      context.moveTo(
+        currentCarEndPoint.x,
+        currentCarEndPoint.y
+      )
+      context.lineTo(
+        currentCarEndPoint.x + math.subset(convertedPoints, math.index(0, 0)) / 2 + math.subset(convertedPoints, math.index(1, 0)) / 2,
+        currentCarEndPoint.y + math.subset(convertedPoints, math.index(0, 1)) / 2 + math.subset(convertedPoints, math.index(1, 1)) / 2
+      )
+
+      context.stroke();
+      //console.log("drew", convertedPoints)
+    }
+
+
+    function drawCarOnEndPointFrontalView() {
+      if (points.items.length < 2) {
+        return
+      }
+      var currentCarEndPoint = points.items[points.items.length - 1]
+      var beforeCurrentEndPoint = points.items[points.items.length - 2];
+
+      var convertedPoints = car_box_format_relative
+
+      var orig_angle_x1 = math.subset(car_box_format_relative, math.index(2, 0));
+      var orig_angle_y1 = math.subset(car_box_format_relative, math.index(2, 1));
+      var orig_angle_x2 = math.subset(car_box_format_relative, math.index(1, 0));
+      var orig_angle_y2 = math.subset(car_box_format_relative, math.index(1, 1));
+      var orig_angle;
+      if (orig_angle_x2 - orig_angle_x1 == 0) {
+        orig_angle = math.PI / 2;
+      } else {
+        orig_angle = math.atan2(orig_angle_y2 - orig_angle_y1, orig_angle_x2 - orig_angle_x1)
+      }
+
+      var angle;
+      if (currentCarEndPoint.x - beforeCurrentEndPoint.x == 0) {
+        angle = math.PI / 2;
+      } else {
+        angle = math.atan2(currentCarEndPoint.y - beforeCurrentEndPoint.y, currentCarEndPoint.x - beforeCurrentEndPoint.x)
+      }
+      angle -= orig_angle;
+
+      var rot_matrix = math.matrix([
+        [math.cos(angle), -math.sin(angle)],
+        [math.sin(angle), math.cos(angle)]
+      ])
+      convertedPoints = math.transpose(math.multiply(rot_matrix, math.transpose(convertedPoints)))
+
+      var x = math.add(convertedPoints.subset(math.index(math.range(0, convertedPoints.size()[0]), 0)), currentCarEndPoint.x)
+      var y = math.add(convertedPoints.subset(math.index(math.range(0, convertedPoints.size()[0]), 1)), currentCarEndPoint.y)
+      convertedPoints = math.concat(x, y, 1)
+
+
+      // Scale object points to map coordinates
+      var canvasTopDown_size = math.matrix([canvasTopDown.width, canvasTopDown.height]) // Width, Height
+
+      var map_patch_corner_x = map_patch.subset(math.index(0))
+      var map_patch_corner_y = map_patch.subset(math.index(1))
+      var map_patch_width = map_patch.subset(math.index(2)) - map_patch.subset(math.index(0))
+      var map_patch_height = map_patch.subset(math.index(3)) - map_patch.subset(math.index(1))
+
+      var canvasTopDown_width = canvasTopDown_size.subset(math.index(0))
+      var canvasTopDown_height = canvasTopDown_size.subset(math.index(1))
+
+      var x = convertedPoints.subset(math.index(math.range(0, convertedPoints.size()[0]), 0))
+      var y = convertedPoints.subset(math.index(math.range(0, convertedPoints.size()[0]), 1))
+
+      // x_trans = map_patch_x_left + (x * (map_patch_x_right - map_patch_x_left) / canvasTopDown_width )
+      var x_trans = math.add(math.divide(math.multiply(x, map_patch_width), canvasTopDown_width), map_patch_corner_x)
+      // y_trans = map_path_y_bottom + (canvasTopDown_height - y) * (map_patch_y_top - map_patch_y_bottom) / canvasTopDown_height
+      var y_trans = math.add(math.divide(math.multiply(math.subtract(canvasTopDown_height, y), map_patch_height), canvasTopDown_height), map_patch_corner_y)
+      convertedPoints = math.concat(x_trans, y_trans, 1)
+
+      // Scale object points to map coordinates
+      var object_points_map = math.matrix(object_points.projectPointsToMap())
+
+      // Find nearest objects to each path x-y point
+
+      nearest_z = math.matrix([])
+      for (var i = 0; i < convertedPoints.size()[0]; i++) {
+        var min_distance = 1e10;
+        path_point = math.subset(convertedPoints, math.index(i, math.range(0, convertedPoints.size()[1])))
+        closest_point_elevation = 0.0
+        for (var j = 0; j < object_points_map.size()[0]; j++) {
+          object_point = math.subset(object_points_map, math.index(j, math.range(0, object_points_map.size()[1])))
+          distance = math.sqrt((path_point._data[0][0] - object_point._data[0][0]) ** 2 + (path_point._data[0][1] - object_point._data[0][1]) ** 2);
+
+          if (distance < min_distance) {
+            min_distance = distance
+            closest_point_elevation = object_elevations[j]
+          }
+        }
+        nearest_z = math.concat(nearest_z, [closest_point_elevation], 0)
+      }
+
+      // nearest_z = nearest_z.resize([nearest_z.size()[0], 1])
+
+      // Find the most common nearest object point 
+      most_common_nearest_z = most_frequent(nearest_z._data)
+      nearest_z = math.multiply(math.ones(nearest_z.size()[0], 1), most_common_nearest_z)
+      nearest_z = nearest_z.resize([nearest_z.size()[0], 1])
+
+      // Append nearest object points
+      convertedPoints = math.concat(convertedPoints, nearest_z, 1)
+
+      // 2) Subtract egopose translation
+      for (var i = 0; i < convertedPoints.size()[0]; i++) {
+        new_point = math.subtract(math.subset(convertedPoints, math.index(i, math.range(0, convertedPoints.size()[1]))), egopose_translation)
+        convertedPoints.subset(math.index(i, math.range(0, convertedPoints.size()[1])), new_point)
+      }
+
+      convertedPoints = math.transpose(convertedPoints)
+
+      // 3) Rotate by egopose rotation matrix
+      convertedPoints = math.multiply(math.transpose(egopose_rotmat), convertedPoints)
+      convertedPoints = math.transpose(convertedPoints)
+
+      // 4) Subtract camera translation
+      for (var i = 0; i < convertedPoints.size()[0]; i++) {
+        new_point = math.subtract(math.subset(convertedPoints, math.index(i, math.range(0, convertedPoints.size()[1]))), cam_translation)
+        convertedPoints.subset(math.index(i, math.range(0, convertedPoints.size()[1])), new_point)
+      }
+      convertedPoints = math.transpose(convertedPoints)
+
+      // 5) Rotate by camera rotation matrix
+      convertedPoints = math.multiply(math.transpose(cam_rotmat), convertedPoints)
+      convertedPoints = math.transpose(convertedPoints)
+      // 6) Map to image view
+      var viewpad = math.matrix(cam_intrinsics)
+      viewpad = math.concat(viewpad, math.zeros(viewpad.size()[0], 1), 1)
+      viewpad = math.concat(viewpad, math.zeros(1, viewpad.size()[1]), 0)
+      viewpad.subset(math.index(3, 3), 1)
+      convertedPoints = math.transpose(convertedPoints)
+      convertedPoints = math.concat(convertedPoints, math.ones(1, convertedPoints.size()[1]), 0)
+      convertedPoints = math.multiply(viewpad, convertedPoints)
+      convertedPoints = math.subset(convertedPoints, math.index(math.range(0, 3), math.range(0, convertedPoints.size()[1])))
+      norm = math.subset(convertedPoints, math.index(2, math.range(0, convertedPoints.size()[1])))
+      norm = math.concat(norm, norm, norm, 0)
+      convertedPoints = math.dotDivide(convertedPoints, norm)
+      convertedPoints = math.subset(convertedPoints, math.index(math.range(0, 2), math.range(0, convertedPoints.size()[1])))
+      convertedPoints = math.transpose(convertedPoints)
+      // Finally transform to the canvas
+      convertedPoints_x = math.multiply(math.subset(convertedPoints, math.index(math.range(0, convertedPoints.size()[0]), 0)), frontalViewRatioW);
+      convertedPoints_y = math.multiply(math.subset(convertedPoints, math.index(math.range(0, convertedPoints.size()[0]), 1)), frontalViewRatioH);
+
+      convertedPoints = math.concat(convertedPoints_x, convertedPoints_y, 1);
+
+      var context = canvasFrontal.getContext('2d');
+      context.lineWidth = 3;
+      context.strokeStyle = "rgba(0,255,215,1)";
+      context.beginPath();
+
+
+      for (var i = 0; i < convertedPoints.size()[0] - 1; i++) {
+        context.moveTo(
+          math.subset(convertedPoints, math.index(i, 0)),
+          math.subset(convertedPoints, math.index(i, 1))
+        )
+        context.lineTo(
+          math.subset(convertedPoints, math.index(i + 1, 0)),
+          math.subset(convertedPoints, math.index(i + 1, 1))
+        )
+      }
+
+      context.moveTo(
+        math.subset(convertedPoints, math.index(convertedPoints.size()[0] - 1, 0)),
+        math.subset(convertedPoints, math.index(convertedPoints.size()[0] - 1, 1))
+      );
+      context.lineTo(
+        math.subset(convertedPoints, math.index(0, 0)),
+        math.subset(convertedPoints, math.index(0, 1))
+      )
+
+      // Draw car nose
+
+      // context.moveTo(
+      //   currentCarEndPoint.x,
+      //   currentCarEndPoint.y
+      // )
+      // context.lineTo(
+      //   currentCarEndPoint.x + math.subset(convertedPoints, math.index(0, 0)) / 2 + math.subset(convertedPoints, math.index(1, 0)) / 2,
+      //   currentCarEndPoint.y + math.subset(convertedPoints, math.index(0, 1)) / 2 + math.subset(convertedPoints, math.index(1, 1)) / 2
+      // )
+
+      context.stroke();
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    function createList(extend) {
+      return Object.assign({}, list, { items: [] }, extend);
+    }
+
+    function getClosest(from, minDist) {
+      var closestPoint;
+      this.eachItem(point => {
+        const dist = Math.hypot(from.x - point.x, from.y - point.y);
+        if (dist < minDist) {
+          closestPoint = point;
+          minDist = dist;
+        }
+      });
+      return closestPoint;
+    }
+
+    function getClosestIx(from, minDist) {
+      var closestPoint;
+      var ix = 0;
+      var closestIx = -1;
+      this.eachItem(point => {
+        const dist = Math.hypot(from.x - point.x, from.y - point.y);
+        if (dist < minDist) {
+          closestPoint = point;
+          minDist = dist;
+          closestIx = ix;
+        }
+        ix++;
+      });
+      return closestIx;
+    }
+
+    function deleteClosestPoint(from, minDist) {
+      var closestPoint;
+      var ix = 0;
+      var closestIx = -1;
+      this.eachItem(point => {
+        const dist = Math.hypot(from.x - point.x, from.y - point.y);
+        if (dist < minDist) {
+          closestPoint = point;
+          minDist = dist;
+          closestIx = ix;
+        }
+        ix++;
+      });
+      if (closestIx > -1 && closestIx != 0) {
+        this.items.splice(closestIx, 1);
+      }
+      lines.items = []
+      // Draw all points again!
+      for (j = 0; j < points.items.length - 1; j++) {
+        lines.add(Line(j, (j + 1)));
+      }
+      if (lines.items.length > 0) {
+        setStyle(lineStyle);
+        topDownCtx.beginPath();
+        // lines.draw();
+        points.drawPathOnTopDownView();
+        topDownCtx.stroke();
+      }
+      setStyle(pointStyle);
+      topDownCtx.beginPath();
+      points.draw();
+      topDownCtx.stroke();
+    }
+
+    function distanceLineFromPoint(line, point) {
+      const lx = points.items[line.p1].x;
+      const ly = points.items[line.p1].y;
+      const v1x = points.items[line.p2].x - lx;
+      const v1y = points.items[line.p2].y - ly;
+      const v2x = point.x - lx;
+      const v2y = point.y - ly;
+      // get unit dist of closest point
+      const u = (v2x * v1x + v2y * v1y) / (v1y * v1y + v1x * v1x);
+      if (u >= 0 && u <= 1) {  // is the point on the line
+        return Math.hypot(lx + v1x * u - point.x, ly + v1y * u - point.y);
+      } else if (u < 0) {  // point is before start
+        return Math.hypot(lx - point.x, ly - point.y);
+      }
+      // point is after end of line
+      return Math.hypot(points.items[line.p2].x - point.x, points.items[line.p2].y - point.y);
+    }
+
+    // this will extend the lines list
+    function getClosestline(from, minDist) {
+      var closestLine;
+      this.eachItem(line => {
+        const dist = distanceLineFromPoint(line, from);
+        if (dist < minDist) {
+          closestLine = line;
+          minDist = dist;
+        }
+      });
+      return closestLine;
+    }
+    function drawPoint(point) {
+      topDownCtx.moveTo(point.x, point.y);
+      topDownCtx.rect(point.x - 2, point.y - 2, 4, 4);
+    }
+    function drawLine(line) {
+      topDownCtx.moveTo(points.items[line.p1].x, points.items[line.p1].y);
+      topDownCtx.lineTo(points.items[line.p2].x, points.items[line.p2].y);
+    }
+    function drawLines() { this.eachItem(line => drawLine(line)) }
+    function drawPoints() { this.eachItem(point => drawPoint(point)) }
+
+    var object_elevations;
+    var car_box_format_relative = null;
+    var car_end_point_pos = null;
+
+
+    var object_points;
+    function createObjectPoints() {
+      return createList({
+        getClosest: getClosest,
+        getClosestIx: getClosestIx,
+        projectPointsToMap: projectPointsToMap,
+      });
+    }
+
+    var points;
+    function createPoints() {
+      return createList({
+        getClosest: getClosest,
+        getClosestIx: getClosestIx,
+        deleteClosest: deleteClosestPoint,
+        draw: drawPoints,
+        projectPointsToMap: projectPointsToMap,
+        drawPathOnFrontalView: drawPathOnFrontalView,
+        drawPathOnTopDownView: drawPathOnTopDownView
+      });
+    }
+
+    var lines;
+    function createLines() {
+      return createList({
+        getClosest: getClosestline,
+        draw: drawLines,
+      });
+    }
+
+    const mouse = { x: 0, y: 0, button: false, drag: false, dragStart: false, dragEnd: false, dragStartX: 0, dragStartY: 0 }
+    function mouseEvents(e) {
+      // if (play) { return; }
+
+      mouse.x = e.pageX - canvasTopDownOffsetX;
+      mouse.y = e.pageY - canvasTopDownOffsetY;
+      const lb = mouse.button;
+      mouse.button = e.type === "mousedown" ? true : e.type === "mouseup" ? false : mouse.button;
+      if (lb !== mouse.button) {
+        if (mouse.button) {
+          mouse.drag = true;
+          mouse.dragStart = true;
+          mouse.dragStartX = mouse.x;
+          mouse.dragStartY = mouse.y;
+        } else {
+          mouse.drag = false;
+          mouse.dragEnd = true;
+        }
+      }
+    }
+
+    $(document).keypress(function (event) {
+      // if (play) { return };
+      var keycode = (event.keyCode ? event.keyCode : event.which);
+      if (keycode == '100') {
+        if (closestPoint) {
+          // Remove this point!!
+          points.deleteClosest(mouse, minDist);
+          if (points.items.length < 2) {
+            context = canvasFrontal.getContext('2d');
+            context.clearRect(0, 0, canvasFrontal.width, canvasFrontal.height);
+            context = canvasTopDown.getContext('2d');
+            context.clearRect(0, 0, canvasTopDown.width, canvasTopDown.height);
+          }
+          drawPathOnFrontalView();
+          drawPathOnTopDownView();
+        }
+      }
+    });
+
+    //["down", "up", "move"].forEach(name => document.addEventListener("mouse" + name, mouseEvents));
+    ["down", "up", "move"].forEach(name => document.getElementById('top-down-view').addEventListener("mouse" + name, mouseEvents));
+    // short cut vars
+    var canvasTopDownW;
+    var canvasTopDownH;
+    var canvasTopDownCw;
+    var canvasTopDownCh;
+    var globalTime;
+    var closestLine;
+    var closestPoint;
+    var pointDrag; // true is dragging a point else dragging a line
+    var dragOffsetX;
+    var dragOffsetY;
+    var cursor;
+    var toolTip;
+    var helpCount = 0;
+    const minDist = 10;
+    const minObjDist = 10;
+    const lineStyle = {
+      lineWidth: 2,
+      strokeStyle: "green",
+    }
+    const pointStyle = {
+      lineWidth: 1,
+      strokeStyle: "blue",
+    }
+    const highlightStyle = {
+      lineWidth: 3,
+      strokeStyle: "red",
+    }
+    const font = {
+      font: "18px arial",
+      fillStyle: "black",
+      textAlign: "center",
+    }
+
+
+    // main update function
+    function update(timer) {
+
+      if (document.getElementById("actionOther").checked) {
+        document.getElementById("actionOtherText").style.display = '';
+      } else {
+        document.getElementById("actionOtherText").style.display = 'none';
+      }
+
+      checkTasks()
+      enableSubmit()
+
+      if (canvasTopDown === undefined) {
+        console.log("not initiliased yet!!");
+        requestAnimationFrame(update);
+        return;
+      }
+      cursor = "crosshair";
+      // toolTip = helpCount < 1 ? "Click to start creating a path for the car!" : "";
+      if (helpCount == 0) {
+        toolTip = "The teal box is our location! Click to add the next path node!";
+      } else if (helpCount == 1) {
+        toolTip = "Click again to add another node to the path!";
+      } else {
+        toolTip = "";
+      }
+      globalTime = timer;
+      topDownCtx.setTransform(1, 0, 0, 1, 0, 0); // reset transform
+      topDownCtx.globalAlpha = 1;           // reset alpha
+      topDownCtx.clearRect(0, 0, canvasTopDownW, canvasTopDownH);
+      var canvasFrontal = document.getElementById('frontal-view-canvas')
+      var context = canvasFrontal.getContext('2d');
+      context.clearRect(0, 0, canvasFrontal.width, canvasFrontal.height);
+
+      // if (play) {
+      //   var frontalctx = canvasFrontal.getContext("2d");
+      //   frontalctx.clearRect(0, 0, canvasFrontal.width, canvasFrontal.height);
+      // }
+
+
+      // if (first_run && !play) {
+      if (first_run) {
+        object_centers = input[idx]["frame_data"]["map_objects_center"]
+        object_elevations = input[idx]["frame_data"]["map_objects_elevation"]
+        map_patch = math.matrix(input[idx]["frame_data"]["map_patch"])
+        egopose = input[idx]["frame_data"]["ego_translation"]
+
+        for (i = 0; i < object_centers.length; i++) {
+          object_center = object_centers[i]
+          object_center = getMapToCanvas(object_center, map_patch)
+          object_points.add(Point2(object_center[0], object_center[1]))
+        }
+
+        if (createdAnnotationsOutputList.length <= idx) {
+          car_anchor = getMapToCanvas(getPointInFront(egopose, egopose_rotmat, 5), map_patch)
+          points.add(Point2(car_anchor[0], car_anchor[1]));
+        }
+
+        first_run = false
+      } else {
+        storeCurrent();
+      }
+
+
+      if (mouse.drag === false) {
+        closestLine = undefined;
+        closestPoint = points.getClosest(mouse, minDist);
+        closestPointIx = points.getClosestIx(mouse, minDist);
+        closestObject = object_points.getClosest(mouse, minObjDist);
+        closestObjectIx = object_points.getClosestIx(mouse, minObjDist);
+        if (closestPoint || closestLine) {
+          toolTip = "Click drag to move " + (closestPoint ? "point" : "line");
+          cursor = "move";
+        }
+      }
+      if (mouse.dragStart) {
+        //console.log("dragging");
+        if (closestPoint) {
+          dragOffsetX = closestPoint.x - mouse.x;
+          dragOffsetY = closestPoint.y - mouse.y;
+          pointDrag = true;
+        }
+        else {
+          if (is_drawing_car_end_point) {
+            console.log("here");
+            //car_end_point_pos = Point2(mouse.x, mouse.y);
+            // Draw car
+          } else {
+            closestPoint = Point2(mouse.x, mouse.y);
+            //car_end_point_pos = closestPoint;
+            points.add(closestPoint);
+            dragOffsetX = 0;
+            dragOffsetY = 0;
+            pointDrag = true;
+            helpCount += 1;
+
+            if (points.length() > 1) {
+              // Draw line
+              lines.add(Line(points.items.length - 2, points.items.length - 1));
+            }
+          }
+          //console.log(car_end_point_pos)
+          // if (!play && $("#video-slider").val() == input[idx]["command_data"]['num_frames']) {
+          // if (!play) {
+          //   points.drawPathOnFrontalView(car_end_point_pos);
+          // }
+          points.drawPathOnFrontalView(car_end_point_pos);
+          points.drawPathOnTopDownView(car_end_point_pos);
+        }
+        mouse.dragStart = false;
+
+      } else if (mouse.drag) {
+        // Update dragging
+        if (is_drawing_car_end_point) {
+
+
+        } else {
+          cursor = 'none';
+          if (pointDrag && closestPointIx != 0) { // && closestObjectIx == -1) {
+            closestPoint.x = mouse.x + dragOffsetX;
+            closestPoint.y = mouse.y + dragOffsetY;
+          }
+        }
+        // if (!play && $("#video-slider").val() == input[idx]["command_data"]['num_frames']) {
+        // if (!play) {
+        //   points.drawPathOnFrontalView(car_end_point_pos);
+        // }
+        points.drawPathOnFrontalView(car_end_point_pos);
+        points.drawPathOnTopDownView(car_end_point_pos);
+      } else {
+        // Show point
+        setStyle(font);
+        showPointCanvas = Point2(mouse.x, mouse.y);
+        showPointMap = getCanvasToMap([showPointCanvas.x, showPointCanvas.y], map_patch)
+      }
+
+      // if (!play) {
+      //   // lines.draw();
+      //   if (points.length() > 1) {
+      //     points.drawPathOnFrontalView();
+      //   }
+      //   // drawPathOnFrontalView()
+      //   drawObjectsFrontal(closestObjectIx);
+      //   drawCarOnEndPointFrontalView();
+      // }
+
+      // draw all points and lines
+      if (points.length() > 1) {
+        points.drawPathOnFrontalView();
+        points.drawPathOnTopDownView();
+      }
+
+      drawObjectsFrontal(closestObjectIx);
+      drawCarOnEndPointFrontalView();
+
+      setStyle(lineStyle);
+      topDownCtx.beginPath();
+      topDownCtx.stroke();
+      setStyle(pointStyle);
+      topDownCtx.beginPath();
+      points.draw();
+      topDownCtx.stroke();
+
+      // drawPathOnTopDownView()
+      drawObjectsTopDown(closestObjectIx);
+      drawCarOnEndPointTopDownView();
+
+      // draw highlighted point or line
+      setStyle(highlightStyle);
+      topDownCtx.beginPath();
+      //if (closestLine) { drawLine(closestLine) }
+      if (closestPoint) { drawPoint(closestPoint) }
+      topDownCtx.stroke();
+
+      if (helpCount < 2) {
+        setStyle(font);
+        topDownCtx.fillText(toolTip, canvasTopDownCw, 30);
+      }
+
+      canvasTopDown.style.cursor = cursor;
+      if (helpCount < 5) {
+        canvasTopDown.title = toolTip;
+      } else {
+        canvasTopDown.title = "";
+      }
+
+      // if (play || $("#video-slider").val() < input[idx]["command_data"]['num_frames']) {
+      //   var frontalctx = canvasFrontal.getContext("2d");
+      //   frontalctx.clearRect(0, 0, canvasFrontal.width, canvasFrontal.height);
+      // }
+
+      requestAnimationFrame(update);
+    }
+
+    $(document).ready(function () {
+      main();
+      requestAnimationFrame(update);
+    })
+    //////////////////// END OF CANVAS CODE
+
+    // Update the index, and save the text in the text area and render new data.
+    function set_idx(new_idx, firstCall) {
+      if (new_idx < 0 || new_idx >= num_images) return;
+
+      // back up current data.
+      if (firstCall !== true) {
+        storeCurrent();
+      }
+
+      // increment index.
+      idx = new_idx;
+
+      // Render new data.
+      // Get new points
+      first_run = true;
+      canvasTopDown = undefined;
+      points = createPoints();
+
+      // Uncheck boxes
+      if (firstCall !== true) {
+        document.getElementById("actionLeft").checked = false;
+        document.getElementById("actionRight").checked = false;
+        document.getElementById("actionChangeLaneLeft").checked = false;
+        document.getElementById("actionChangeLaneRight").checked = false;
+        document.getElementById("actionULeft").checked = false;
+        document.getElementById("actionURight").checked = false;
+        document.getElementById("actionPark").checked = false;
+        document.getElementById("actionStop").checked = false;
+        document.getElementById("actionFollow").checked = false;
+        document.getElementById("actionSlowDown").checked = false;
+        document.getElementById("actionOther").checked = false;
+        document.getElementById("actionOtherText").value = "";
+        document.getElementById("legalityLegal").checked = false;
+        document.getElementById("legalityIllegal").checked = false;
+      }
+
+      if (createdAnnotationsOutputList.length > idx) {
+        points.items = createdAnnotationsOutputList[idx]["points"];
+        document.getElementById("actionLeft").checked = createdAnnotationsOutputList[idx]["actions"]["actionLeft"];
+        document.getElementById("actionRight").checked = createdAnnotationsOutputList[idx]["actions"]["actionRight"];
+        document.getElementById("actionChangeLaneLeft").checked = createdAnnotationsOutputList[idx]["actions"]["actionChangeLaneLeft"];
+        document.getElementById("actionChangeLaneRight").checked = createdAnnotationsOutputList[idx]["actions"]["actionChangeLaneRight"];
+        document.getElementById("actionULeft").checked = createdAnnotationsOutputList[idx]["actions"]["actionULeft"];
+        document.getElementById("actionURight").checked = createdAnnotationsOutputList[idx]["actions"]["actionURight"];
+        document.getElementById("actionPark").checked = createdAnnotationsOutputList[idx]["actions"]["actionPark"];
+        document.getElementById("actionStop").checked = createdAnnotationsOutputList[idx]["actions"]["actionStop"];
+        document.getElementById("actionFollow").checked = createdAnnotationsOutputList[idx]["actions"]["actionFollow"];
+        document.getElementById("actionSlowDown").checked = createdAnnotationsOutputList[idx]["actions"]["actionSlowDown"];
+        document.getElementById("actionOther").checked = createdAnnotationsOutputList[idx]["actions"]["actionOther"];
+        document.getElementById("actionOtherText").value = createdAnnotationsOutputList[idx]["actions"]["actionOtherText"];
+        document.getElementById("legalityLegal").checked = createdAnnotationsOutputList[idx]["legality"]["legalityLegal"];
+        document.getElementById("legalityIllegal").checked = createdAnnotationsOutputList[idx]["legality"]["legalityIllegal"];
+      }
+
+      object_points = createObjectPoints();
+      lines = createLines();
+      render();
+
+      // If the UI is enabled, enable or disable the buttons depending on
+      // the index.
+      if (enabled) {
+        var prev_btn = $('#prev-btn');
+        var next_btn = $('#next-btn');
+        prev_btn.prop('disabled', true);
+        next_btn.prop('disabled', true);
+        if (idx > 0) {
+          prev_btn.prop('disabled', false);
+        }
+        if (idx < num_images - 1) next_btn.prop('disabled', false);
+      }
+
+      // Refresh the counter.
+      $('.counter-top').text(idx + 1);
+      $('.counter-bottom').text(num_images);
+    }
+
+    function storeCurrent() {
+      // Storing the current points
+
+      var out = {
+        "url": input[idx]["url"],
+        "top-down": input[idx]["top-down"],
+        "command_data": input[idx]["command_data"],
+        "frame_data_url": input[idx]["frame_data_url"],
+        "points": points.items,
+        "command_token": input[idx]["command_data"]["command_token"],
+        "command_ix": input[idx]["command_data"]["command_ix"],
+        "split": input[idx]["command_data"]["split"],
+        "final_car_destination": "TODO",
+        "canvas": {
+          "width": canvasTopDown.width,
+          "height": canvasTopDown.height
+        },
+        "actions": {
+          "actionLeft": document.getElementById("actionLeft").checked,
+          "actionRight": document.getElementById("actionRight").checked,
+          "actionChangeLaneLeft": document.getElementById("actionChangeLaneLeft").checked,
+          "actionChangeLaneRight": document.getElementById("actionChangeLaneRight").checked,
+          "actionULeft": document.getElementById("actionULeft").checked,
+          "actionURight": document.getElementById("actionURight").checked,
+          "actionPark": document.getElementById("actionPark").checked,
+          "actionStop": document.getElementById("actionStop").checked,
+          "actionFollow": document.getElementById("actionFollow").checked,
+          "actionSlowDown": document.getElementById("actionSlowDown").checked,
+          "actionOther": document.getElementById("actionOther").checked,
+          "actionOtherText": document.getElementById("actionOtherText").value,
+        },
+        "legality": {
+          "legalityLegal": document.getElementById("legalityLegal").checked,
+          "legalityIllegal": document.getElementById("legalityIllegal").checked,
+        }
+      }
+      if (createdAnnotationsOutputList.length > idx) {
+        createdAnnotationsOutputList[idx] = out;
+      } else {
+        createdAnnotationsOutputList.push(out);
+      }
+
+    }
+
+    function checkTasks() {
+
+      drawn_path = false
+      any_checked_actions = false
+      any_checked_legality = false
+
+      if (points.items.length >= 2) {
+        drawn_path = true
+      }
+
+      if (document.getElementById("actionLeft").checked) { any_checked_actions = true }
+      if (document.getElementById("actionRight").checked) { any_checked_actions = true }
+      if (document.getElementById("actionChangeLaneLeft").checked) { any_checked_actions = true }
+      if (document.getElementById("actionChangeLaneRight").checked) { any_checked_actions = true }
+      if (document.getElementById("actionULeft").checked) { any_checked_actions = true }
+      if (document.getElementById("actionURight").checked) { any_checked_actions = true }
+      if (document.getElementById("actionPark").checked) { any_checked_actions = true }
+      if (document.getElementById("actionStop").checked) { any_checked_actions = true }
+      if (document.getElementById("actionFollow").checked) { any_checked_actions = true }
+      if (document.getElementById("actionOther").checked && document.getElementById("actionOtherText").value) { any_checked_actions = true }
+      if (document.getElementById("actionSlowDown").checked) { any_checked_actions = true }
+
+      if (document.getElementById("legalityLegal").checked) { any_checked_legality = true }
+      if (document.getElementById("legalityIllegal").checked) { any_checked_legality = true }
+
+      if (drawn_path) {
+        document.getElementById("task_path").style.backgroundColor = "#5ae406"
+      } else {
+        document.getElementById("task_path").style.backgroundColor = "#f93005"
+      }
+      if (any_checked_actions) {
+        document.getElementById("task_action").style.backgroundColor = "#5ae406"
+      } else {
+        document.getElementById("task_action").style.backgroundColor = "#f93005"
+      }
+      if (any_checked_legality) {
+        document.getElementById("task_feasibility").style.backgroundColor = "#5ae406"
+      } else {
+        document.getElementById("task_feasibility").style.backgroundColor = "#f93005"
+      }
+
+    }
+
+    function enableSubmit() {
+      // Enable the submit button only if all the frames are annotated
+      $('#submit-btn').prop('disabled', false);
+      if (createdAnnotationsOutputList.length < num_images) {
+        $('#submit-btn').prop('disabled', true);
+      } else {
+        incomplete_anno_indices = []
+        for (var i = 0; i < num_images; i++) {
+          createdAnnotationsOutput = createdAnnotationsOutputList[i];
+          drawn_path = false
+          any_checked_actions = false
+          any_checked_legality = false
+
+          if (createdAnnotationsOutput["points"].length >= 2) {
+            drawn_path = true
+          }
+          createdAnnotationsOutputActions = createdAnnotationsOutput["actions"];
+          if (createdAnnotationsOutputActions["actionLeft"]) { any_checked_actions = true }
+          if (createdAnnotationsOutputActions["actionRight"]) { any_checked_actions = true }
+          if (createdAnnotationsOutputActions["actionChangeLaneLeft"]) { any_checked_actions = true }
+          if (createdAnnotationsOutputActions["actionChangeLaneRight"]) { any_checked_actions = true }
+          if (createdAnnotationsOutputActions["actionULeft"]) { any_checked_actions = true }
+          if (createdAnnotationsOutputActions["actionURight"]) { any_checked_actions = true }
+          if (createdAnnotationsOutputActions["actionPark"]) { any_checked_actions = true }
+          if (createdAnnotationsOutputActions["actionStop"]) { any_checked_actions = true }
+          if (createdAnnotationsOutputActions["actionFollow"]) { any_checked_actions = true }
+          if (createdAnnotationsOutputActions["actionSlowDown"]) { any_checked_actions = true }
+          if (createdAnnotationsOutputActions["actionOther"] && createdAnnotationsOutputActions["actionOtherText"]) { any_checked_actions = true }
+
+          createdAnnotationsOutputLegality = createdAnnotationsOutput["legality"];
+          if (createdAnnotationsOutputLegality["legalityLegal"]) { any_checked_legality = true }
+          if (createdAnnotationsOutputLegality["legalityIllegal"]) { any_checked_legality = true }
+
+          if ((drawn_path == false) || (any_checked_actions == false) || (any_checked_legality == false)) {
+            $('#submit-btn').prop('disabled', true);
+            if (i != num_images - 1) { incomplete_anno_indices.push(i + 1) }
+          }
+        }
+        if ((incomplete_anno_indices.length) && (not_alerted) && (idx == num_images - 1)) {
+          not_alerted = false;
+          alert("You have reached the last command, but there are incomplete annotations on previous commands: " + incomplete_anno_indices)
+        }
+      }
+    }
+
+    // Enable the UI.
+    function enable_hit() {
+      enabled = true;
+
+      // Enable components
+      $('#next-btn').click(function () {
+        set_idx(idx + 1);
+      });
+      $('#prev-btn').click(function () {
+        set_idx(idx - 1);
+        not_alerted = true;
+      });
+
+      // Set up submit handler.
+      easyturk.setupSubmit();
+      $('#submit-btn').click(function () {
+        storeCurrent();
+        //
+        // // validate all descriptions
+        // for (var i = 0; i < num_images; i++) {
+        //   if (output[i].objects.length < output[i].num_objects) {
+        //     alert('Error: You did not create enough objects.')
+        //   }
+        //   for (var j = 0; j < output[i].num_objects; j++) {
+        //     obj = output[i].objects[j]
+        //     if (obj.name == null || obj.name == '') {
+        //       alert('Error: You did not fill in a object name in image ' + (i + 1) + '!');
+        //       return false;
+        //     }
+        //     if (containsNonLatinCodepoints(obj.name)) {
+        //       alert("Error: Please write a different phrase for " + (i + 1) + "! '" + obj.name + "' contains a unicode character.");
+        //       return false;
+        //     }
+        //     if (obj.rect == null) {
+        //       alert('Error: You must draw a bounding box for region ' + (i + 1) + '! (Use your mouse on the image.)');
+        //       return false;
+        //     }
+        //   }
+        // }
+
+        // otherwise we're good. HIT done!
+        easyturk.setOutput(createdAnnotationsOutputList);
+      });
+    }
+  </script>
+</body>
+
+</html>

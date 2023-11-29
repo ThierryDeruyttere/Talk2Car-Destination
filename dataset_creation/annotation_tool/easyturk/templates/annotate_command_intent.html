@@ -1,0 +1,1241 @@
+<html>
+
+<head>
+  <title>Annotate objects in images</title>
+  <!-- easyturk depends on these libraries -->
+  <script src='https://cdnjs.cloudflare.com/ajax/libs/jquery/2.1.1/jquery.min.js'></script>
+  <script src='https://cdnjs.cloudflare.com/ajax/libs/json3/3.3.2/json3.min.js'></script>
+
+  <!-- end of required libraries -->
+  <script src='https://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.min.js'></script>
+  <script src='https://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.6.0/underscore-min.js'></script>
+  <link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css" rel="stylesheet">
+  <script src='https://cdnjs.cloudflare.com/ajax/libs/backbone.js/1.1.2/backbone-min.js'></script>
+  <script src=https://cdnjs.cloudflare.com/ajax/libs/mathjs/3.3.0/math.min.js></script>
+  <script src="https://cdn.jsdelivr.net/gh/nicolaspanel/numjs@0.15.1/dist/numjs.min.js"></script>
+
+  <style>
+    .obj-btn {
+      margin-top: 20px;
+      margin-top: 20px;
+      font-size: 15pt;
+    }
+
+    .obj-name {
+      font-size: 20pt;
+      width: 500px;
+      margin-top: 20px;
+      margin-top: 20px;
+      margin-bottom: 10px;
+      height: 50px;
+    }
+
+    #button-div {
+      margin-bottom: 10px;
+    }
+
+    #counter {
+      margin: 0 10px;
+      font-size: 20pt;
+      font-weight: bold;
+    }
+
+    .desc {
+      font-size: 12pt;
+    }
+  </style>
+
+</head>
+
+<style type='text/css'>
+  .my-legend .legend-title {
+    text-align: left;
+    margin-bottom: 5px;
+    font-weight: bold;
+    font-size: 90%;
+  }
+
+  .my-legend .legend-scale ul {
+    margin: 0;
+    margin-bottom: 5px;
+    padding: 0;
+    float: left;
+    list-style: none;
+  }
+
+  .my-legend .legend-scale ul li {
+    font-size: 80%;
+    list-style: none;
+    margin-left: 0;
+    line-height: 18px;
+    margin-bottom: 2px;
+  }
+
+  .my-legend ul.legend-labels li span {
+    display: block;
+    float: left;
+    height: 16px;
+    width: 30px;
+    margin-right: 5px;
+    margin-left: 0;
+    border: 1px solid #999;
+  }
+
+  .my-legend .legend-source {
+    font-size: 70%;
+    color: #999;
+    clear: both;
+  }
+
+  .my-legend a {
+    color: #777;
+  }
+
+  p {
+    margin-bottom: 0em;
+    margin-top: 0em;
+  }
+</style>
+
+<body>
+  <div class='container'>
+    <h4><b>Based on the given command and scene, indicate the intent of the driver.</b></h4>
+
+    <!-- <div class="container">
+      <h3>Your task is below</h3>
+    </div>
+    <div class='container-fluid'> -->
+
+    <div class='row'>
+      <div class='col-xs-12 text-center'>
+        <div id='image-container'>
+          <img style='width:100%; height:auto; position:absolute; z-index:1;' id='frontal-view'>
+          <canvas class="video" id="frontal-view-canvas" style="position:relative; z-index:20;">
+          </canvas>
+        </div>
+        <div style="margin-top:1em">
+          <!-- <div class="col-xs-2">
+              <button class='play-button'>Play</button>
+            </div>
+            <div class="col-xs-10">
+              <input type='range' min='1' max='100' value='50' className='slider' id='video-slider'>
+            </div> -->
+        </div>
+      </div>
+    </div>
+
+    <div class='col-xs-8'>
+      <div id="command-div"
+        style="font-size:16; font-style:normal; background-color: #cfc; border: 1px solid green;  width:100%;">
+      </div>
+      <div id='instructions'
+        style="font-size:15; font-style:normal; background-color: #ffffff; border: 1px solid green; width:100%;">
+        <br />
+        <b style="font-size:20px">Instructions</b>
+        <br />
+        You are driving around in a self-driving car. At a certain point, you give a command that refers to a specific
+        object (yellow bounding box) to the car:
+        <!--<p style="color: #2e6c80; font-size:12;"><b>Task:</b></p>-->
+        <ul>
+          <li>
+            Indicate the <b>intent</b> of the command in the checkboxes on the bottom right - only one box can be checked.
+          </li>
+          <li>
+            If the executing the command is preceded by some other actions that are necessary to be
+            undertaken, <b>indicate the main intent, the core goal of the command</b>.
+            For instance, for the command ``Hey we need to turn right at the end of the street'', the intent of the command is ``turn right''.
+            Or in other words, the intent is what action we want the car to execute.
+            Some commands may not be as explicit though.
+            i.e the command ``Hey my friend is there, we are going to the party together on foot'' indicates the intent ''drop off''.
+          </li>
+          <li>
+            The object that the command refers to is indicated with a <b>yellow 3D bounding box</b> in the camera view.&nbsp;
+          </li>
+          <li>
+            After indicating the command intent, click on the <b>"Next"</b> button to move on to the next frame. &nbsp;
+          </li>
+          <li>
+            After annotating all the frames, click on the <b>"Submit"</b> button to complete the task (you can only
+            submit after selecting the intent in every frame). &nbsp;
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <div class='col-xs-2'>
+      <div class='legend-title'><b>Intent:</b></div>
+      <div>
+        <input id="actionLeft" type="checkbox" name="actionLeft" class="chk" />
+        <label for="actionLeft" style="font-size:10;">Turn Left</label>
+      </div>
+      <div>
+        <input id="actionRight" type="checkbox" name="actionRight" class="chk" />
+        <label for="actionRight" style="font-size:10;">Turn Right</label>
+      </div>
+      <div>
+        <input id="actionChangeLaneLeft" type="checkbox" name="actionChangeLaneLeft" class="chk" />
+        <label for="actionChangeLaneLeft" style="font-size:10;">Change Lane Left</label>
+      </div>
+      <div>
+        <input id="actionChangeLaneRight" type="checkbox" name="actionChangeLaneRight" class="chk" />
+        <label for="actionChangeLaneRight" style="font-size:10;">Change Lane Right</label>
+      </div>
+      <div>
+        <input id="actionULeft" type="checkbox" name="actionULeft" class="chk" />
+        <label for="actionULeft" style="font-size:10;">U-Turn Left</label>
+      </div>
+      <div>
+        <input id="actionURight" type="checkbox" name="actionURight" class="chk" />
+        <label for="actionURight" style="font-size:10;">U-Turn Right</label>
+      </div>
+      <div>
+        <input id="actionPark" type="checkbox" name="actionPark" class="chk" />
+        <label for="actionPark" style="font-size:10;">Park</label>
+      </div>
+      <div>
+        <input id="actionStop" type="checkbox" name="actionStop" class="chk" />
+        <label for="actionStop" style="font-size:10;">Stop / Pull over / Pull up</label>
+      </div>
+      <div>
+        <input id="actionPickUp" type="checkbox" name="actionPickUp" class="chk" />
+        <label for="actionPickUp" style="font-size:10;">Pick Up</label>
+      </div>
+      <div>
+        <input id="actionOvertake" type="checkbox" name="actionOvertake" class="chk" />
+        <label for="actionOvertake" style="font-size:10;">Overtake</label>
+      </div>
+      <div>
+        <input id="actionContinue" type="checkbox" name="actionContinue" class="chk" />
+        <label for="actionContinue" style="font-size:10;">Carry on/Continue</label>
+      </div>
+      <div>
+        <input id="actionDropOff" type="checkbox" name="actionDropOff" class="chk" />
+        <label for="actionDropOff" style="font-size:10;">Drop Off</label>
+      </div>
+      <div>
+        <input id="actionFollow" type="checkbox" name="actionFollow" class="chk" />
+        <label for="actionFollow" style="font-size:10;">Follow</label>
+      </div>
+      <div>
+        <input id="actionSlowDown" type="checkbox" name="actionSlowDown" class="chk" />
+        <label for="actionSlowDown" style="font-size:10;">Slow Down</label>
+      </div>
+      <div>
+        <input id="actionWait" type="checkbox" name="actionWait" class="chk" />
+        <label for="actionWait" style="font-size:10;">Wait</label>
+      </div>
+      <div>
+        <input id="actionApproach" type="checkbox" name="actionApproach" class="chk" />
+        <label for="actionApproach" style="font-size:10;">Approach</label>
+      </div>
+      <div>
+        <input id="actionMoveAway" type="checkbox" name="actionMoveAway" class="chk" />
+        <label for="actionMoveAway" style="font-size:10;">Move Away / Stay Clear</label>
+      </div>
+      <div>
+        <input id="actionOther" type="checkbox" name="actionOther" class="chk" />
+        <label for="actionOther" style="font-size:10;">Other</label>
+        <input type="text" id="actionOtherText" name="actionOtherText" placeholder="Which other..." />
+      </div>
+    </div>
+
+    <div class='col-xs-2'>
+      <!--<div class='my-legend'>
+        <div class='legend-title'>Map Legend:</div>
+        <div class='legend-scale'>
+          <ul class='legend-labels'>
+            <li><span style='background:#c0dce3;'></span>Drivable Area</li>
+            <li><span style='background:#7db1cb;'></span>Road Segment</li>
+            <li><span style='background:#87c587;'></span>Lane</li>
+            <li><span style='background:#ebc2be;'></span>Pedestrian Crossing</li>
+            <li><span style='background:#ea8586;'></span>Walkway</li>
+            <li><span style='background:#fddeb6;'></span>Stop Lane</li>
+            <li><span style='background:#edb571;'></span>Carpark Area</li>
+          </ul>
+        </div>
+      </div>-->
+
+      <div class='my-legend'>
+        <div class='legend-title'>Tasks:</div>
+        <div class='legend-scale'>
+          <ul class='legend-labels'>
+            <li>
+              <input type="text" id="task_intent" value="Indicated intent" style="font-weight:bold;" readonly>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class='row'>
+    <div class='col-xs-12 text-center' id='button-div'>
+      <button id='prev-btn' tabindex="1" class='btn btn-lg btn-primary' disabled>Back</button>
+      <span id='counter'>
+        <span class='counter-top'></span> / <span class='counter-bottom'></span>
+      </span>
+      <button id='next-btn' tabindex="0" class='btn btn-lg btn-primary' disabled>Next</button>
+    </div>
+  </div>
+
+  <div class='col-xs-1 text-center' style='visibility: hidden; height: 0px; width: 0px'>
+        <div id='top-down-container'>
+          <img style='width:100%; height:auto; position:absolute;z-index:1;' id='top-down-view-hidden'>
+          <canvas class="video" id="top-down-view" style="position:relative; z-index:20;">
+          </canvas>
+        </div>
+      </div>
+
+  </div>
+  </div>
+
+
+  <!--IMPORTANT: This import contains all the functions you need to read in your input data and send back worker outputs.-->
+  {% include "easyturk.html" %}
+
+  <script>
+
+    $('input.chk').on('change', function () {
+      $('input.chk').not(this).prop('checked', false);
+    });
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+    var DEFAULT_INPUT = [
+      { "url": "https://t2c-path.s3.eu-west-3.amazonaws.com/imgs/frontal_train_580.jpg", "top-down": "https://t2c-path.s3.eu-west-3.amazonaws.com/imgs/top_down_train_580.png", "command_data": { "split": "train", "scenes": "scene-0522", "command": "keep following the car in front of us. ", "command_ix": 580, "command_token": "ea6dc5cc49c08163d11a1f159479899e", "box_ix": 0 }, "frame_data_url": "https://t2c-path.s3.eu-west-3.amazonaws.com/files/frame_train_580_data.json" }, { "url": "https://t2c-path.s3.eu-west-3.amazonaws.com/imgs/frontal_test_2242.jpg", "top-down": "https://t2c-path.s3.eu-west-3.amazonaws.com/imgs/top_down_test_2242.png", "command_data": { "split": "test", "scenes": "scene-0784", "command": "park behind that first car that is parked in the street ahead of us. ", "command_ix": 2242, "command_token": "236296ffb6005d02e56ed29f9a9cbac1", "box_ix": 9 }, "frame_data_url": "https://t2c-path.s3.eu-west-3.amazonaws.com/files/frame_test_2242_data.json" }, { "url": "https://t2c-path.s3.eu-west-3.amazonaws.com/imgs/frontal_train_1915.jpg", "top-down": "https://t2c-path.s3.eu-west-3.amazonaws.com/imgs/top_down_train_1915.png", "command_data": { "split": "train", "scenes": "scene-0357", "command": "park beside the construction vehicle", "command_ix": 1915, "command_token": "dab73f66a65ccc40cf068c685cee839e", "box_ix": 18 }, "frame_data_url": "https://t2c-path.s3.eu-west-3.amazonaws.com/files/frame_train_1915_data.json" }
+    ];
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+    $(document).ready(function () {
+      var keyCodes = [61, 107, 173, 109, 187, 189];
+
+      $(document).keydown(function (event) {
+        if (event.ctrlKey == true && (keyCodes.indexOf(event.which) != -1)) {
+          event.preventDefault();
+        }
+        if (event.metaKey == true && (keyCodes.indexOf(event.which) != -1)) {
+          event.preventDefault();
+        }
+      });
+
+    });
+
+    // If this is a HIT on AMT, then replace the default input with the real input.
+    var input = easyturk.getInput(DEFAULT_INPUT);
+    var num_images = input.length;
+
+    // Some variables to track state of the HIT.
+    var idx = 0;
+    var enabled = false;
+    var output = [];
+    var bb = null;
+
+    var play = false;
+
+    var createdAnnotationsOutputList = [];
+
+    function main() {
+
+      // Enable the UI if the HIT is not in preview mode.
+      if (true || !easyturk.isPreview()) {
+        enable_hit();
+      }
+
+      // Set up empty description blobs.
+      for (var k = 0; k < num_images; k++) {
+        input[k].objects = [];
+        for (var l = 0; l < input[k].num_objects; l++) {
+          input[k].objects.push({ 'name': '', 'rect': null });
+        }
+        output.push(input[k]);
+      }
+
+      // Load the images.
+      _.each(output, function (input_elem) {
+        var imgUrl = input_elem['url'];
+        var img = new Image();
+        img.onload = function () {
+          output[idx].image_width = img.width;
+        };
+        img.src = imgUrl;
+
+      });
+
+      $.ajaxSetup({
+        async: false
+      });
+      // Fetch the frame data
+      _.each(input, function (input_elem) {
+        console.log(input_elem["frame_data_url"])
+
+        $.getJSON(input_elem["frame_data_url"], function (data) {
+          console.log(data);
+          input_elem["frame_data"] = data
+        })
+      })
+      console.log(input)
+      $.ajaxSetup({
+        async: true
+      });
+
+      // Render the objects and the bounding box interaction.
+      set_idx(idx, true);
+    }
+
+    function add_existing_boxes(bb) {
+      for (var k = 0; k < output[idx].num_objects; k++) {
+        obj = output[idx].objects[k];
+        if (obj.rect != null) {
+          index = bb.addStaticBox(obj.rect);
+          obj.static_index = index;
+        }
+      }
+    }
+
+    // For transform to image and map
+    var egopose_translation;
+    var egopose_rotmat;
+    var cam_translation;
+    var cam_rotmat;
+    var cam_intrinsics;
+    var map_patch;
+    var canvasFrontal;
+    var frontalViewRatioW;
+    var frontalViewRatioH;
+
+    // Use the current index to update the image and description.
+    function render() {
+      // Set up the image
+      $("#frontal-view").attr('src', input[idx]['url']);
+      console.log($("#frontal-view"));
+
+      $("#top-down-view-hidden").attr('src', input[idx]['top-down']);
+
+      // Top Down View
+      var image = new Image();
+      image.onload = function () {
+        drawImage(image);
+      }
+      image.src = input[idx]['top-down']
+
+      $("#command-div").text("Command: " + input[idx]['command_data']["command"])
+      // Frontal Image
+      var imageFrontal = new Image();
+      imageFrontal.onload = function () {
+        canvasFrontal = document.getElementById('frontal-view-canvas');
+        canvasFrontal.width = $("#frontal-view").width();
+        canvasFrontal.height = $("#frontal-view").height();
+        frontalViewRatioW = (canvasFrontal.width / 1600);
+        frontalViewRatioH = (canvasFrontal.height / 900);
+      }
+      imageFrontal.src = input[idx]['url'];
+
+
+      egopose_translation = math.matrix([input[idx]["frame_data"]["ego_translation"]])
+      egopose_rotmat = math.matrix(input[idx]["frame_data"]["ego_rotation"])
+      cam_translation = math.matrix([input[idx]["frame_data"]["cam_translation"]])
+      cam_rotmat = math.matrix(input[idx]["frame_data"]["cam_rotation"]);
+      cam_intrinsics = math.matrix(input[idx]["frame_data"]["cam_intrinsic"]);
+      map_patch = math.matrix(input[idx]["frame_data"]["map_patch"]);
+
+      first_run = true;
+      is_drawing_car_end_point = false;
+      not_alerted = true;
+
+      // Refresh the counter
+      $('.counter-top').text(idx + 1);
+      $('.counter-bottom').text(input.length);
+
+      // If the UI is enabled, enable or disable the buttons depending on
+      // the index.
+      if (enabled) {
+        $('#prev-btn').prop('disabled', false);
+        $('#next-btn').prop('disabled', false);
+        if (idx == 0) {
+          $('#prev-btn').prop('disabled', true);
+        }
+        if (idx == input.length - 1) {
+          $('#next-btn').prop('disabled', true);
+        }
+      }
+    }
+
+    hRatio = null;
+    vRatio = null;
+    function drawImageScaled(img, ctx) {
+      var canvasTopDown = ctx.canvas;
+      hRatio = canvasTopDown.width / img.width;
+      vRatio = canvasTopDown.height / img.height;
+      ratio = Math.min(hRatio, vRatio);
+      var centerShift_x = (canvasTopDown.width - img.width * ratio) / 2;
+      var centerShift_y = (canvasTopDown.height - img.height * ratio) / 2;
+      ctx.clearRect(0, 0, canvasTopDown.width, canvasTopDown.height);
+      ctx.drawImage(img, 0, 0, img.width, img.height,
+        centerShift_x, centerShift_y, img.width * ratio, img.height * ratio);
+    }
+
+    function drawImage(image) {
+      canvasTopDown = document.getElementById('top-down-view');
+
+      canvasTopDown.width = $("#top-down-view-hidden").width();
+      canvasTopDown.height = $("#top-down-view-hidden").height();
+
+      topDownCtx = canvasTopDown.getContext("2d");
+      $canvasTopDown = $("#top-down-view");
+      canvasTopDownOffset = $canvasTopDown.offset();
+      canvasTopDownOffsetX = canvasTopDownOffset.left;
+      canvasTopDownOffsetY = canvasTopDownOffset.top;
+      scrollX = $canvasTopDown.scrollLeft();
+      scrollY = $canvasTopDown.scrollTop();
+
+      canvasTopDownW = canvasTopDown.width;
+      canvasTopDownH = canvasTopDown.height;
+      canvasTopDownCw = canvasTopDownW / 2;
+      canvasTopDownCh = canvasTopDownH / 2;
+
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+    var canvasTopDownOffsetX;
+    var canvasTopDownOffsetY;
+
+    var canvasTopDown;
+    var topDownCtx;
+
+    const Point2 = (x, y) => ({ x, y });  // creates a point
+    const Line = (p1, p2) => ({ p1, p2 });
+    const setStyle = (style) => eachOf(Object.keys(style), key => { topDownCtx[key] = style[key] });
+    const eachOf = (array, callback) => { var i = 0; while (i < array.length && callback(array[i], i++) !== true); };
+
+    const list = {
+      items: null,
+      length() { return this.items.length },
+      add(item) { this.items.push(item); return item },
+      eachItem(callback) {
+        var i = 0;
+        while (i < this.items.length) {
+          callback(this.items[i], i++);
+        }
+      }
+    }
+
+    function __drawLine(start, end, color = "rgba(205,50,50,1)") {
+      var canvasFrontal = document.getElementById('frontal-view-canvas')
+      var context = canvasFrontal.getContext('2d');
+      context.lineWidth = 2;
+      context.strokeStyle = color;
+      context.beginPath();
+      context.moveTo(start[0] / 1600 * canvasFrontal.width, (start[1] / 900) * canvasFrontal.height);
+      context.lineTo(end[0] / 1600 * canvasFrontal.width, (end[1] / 900) * canvasFrontal.height);
+      context.stroke();
+    }
+
+    function __drawRect(selectedCorners, color = "rgba(205,50,50,1)") {
+      var prev = selectedCorners[selectedCorners.length - 1];
+      for (var i = 0; i < selectedCorners.length; i++) {
+        var corner = selectedCorners[i];
+        this.__drawLine([parseInt(prev[0]), parseInt(prev[1])],
+          [parseInt(corner[0]), parseInt(corner[1])],
+          color);
+        prev = corner;
+      }
+    }
+
+    function drawBox(box_points, color = "rgba(205,50,50,1)") {
+      // Draw the sides;
+      box_points = box_points[0].map((_, colIndex) => box_points.map(row => row[colIndex]));
+      for (var i = 0; i < 4; i++) {
+        __drawLine([parseInt(box_points[i][0]), parseInt(box_points[i][1])],
+          [parseInt(box_points[i + 4][0]), parseInt(box_points[i + 4][1])],
+          color);
+      }
+      __drawRect(box_points.slice(0, 4), color);
+      __drawRect(box_points.slice(4, 8), color);
+    }
+
+    function drawObjectsFrontal(special_index = -1) {
+      var objectsToDraw = input[idx]["frame_data"]["image_objects_bbox"];
+      var referredObjectIx = input[idx]["command_data"]["box_ix"];
+
+      for (var i = 0; i < objectsToDraw.length; i++) {
+
+        if (i == special_index) {
+          color = "rgba(205,50,50,1)";
+        } else if (i == referredObjectIx) {
+          color = "rgba(255,226,0,1)";
+        } else {
+          // Set opacity to 0 to make it transparent
+          color = "rgba(47,79,79,0)";
+        }
+
+        var box = math.transpose(math.matrix(objectsToDraw[i]))._data; // 2 x 8 matrix , first row is x, second is y
+        drawBox(box, color);
+      }
+    }
+
+    function drawObjectsTopDown(special_index = -1) {
+      var objectsToDraw = math.matrix(input[idx]["frame_data"]["map_objects_bbox"]);
+
+      // Step 1: Convert points to canvas coords
+
+      var map_patch_corner_x = map_patch.subset(math.index(0))
+      var map_patch_corner_y = map_patch.subset(math.index(1))
+      var map_patch_width = map_patch.subset(math.index(2)) - map_patch.subset(math.index(0))
+      var map_patch_height = map_patch.subset(math.index(3)) - map_patch.subset(math.index(1))
+
+      var canvasTopDown_width = canvasTopDown.width;
+      var canvasTopDown_height = canvasTopDown.height;
+
+      var x = objectsToDraw.subset(math.index(math.range(0, objectsToDraw.size()[0]), math.range(0, objectsToDraw.size()[1]), 0));
+      var y = objectsToDraw.subset(math.index(math.range(0, objectsToDraw.size()[0]), math.range(0, objectsToDraw.size()[1]), 1));
+      var converted_x = math.multiply(math.divide(math.subtract(x, map_patch_corner_x), (map_patch_width)), canvasTopDown_width);
+      var converted_y = math.multiply(math.subtract(1, math.divide(math.subtract(y, map_patch_corner_y), (map_patch_height))), canvasTopDown_height);
+      var convertedPoints = math.concat(converted_x, converted_y, 2);
+      //console.log(convertedPoints);
+      // Convert Ego bounding box coords
+      var ego_box = math.matrix(input[idx]["frame_data"]["egobbox"]);
+
+      var ego_x = ego_box.subset(math.index(math.range(0, ego_box.size()[0]), 0));
+      var ego_y = ego_box.subset(math.index(math.range(0, ego_box.size()[0]), 1));
+      var ego_converted_x = math.multiply(math.divide(math.subtract(ego_x, map_patch_corner_x), (map_patch_width)), canvasTopDown_width);
+      var ego_converted_y = math.multiply(math.subtract(1, math.divide(math.subtract(ego_y, map_patch_corner_y), (map_patch_height))), canvasTopDown_height);
+      var rel_x_points = math.subtract(ego_converted_x, math.mean(ego_converted_x));
+      var rel_y_points = math.subtract(ego_converted_y, math.mean(ego_converted_y));
+      var ego_convertedPoints = math.concat(ego_converted_x, ego_converted_y, 1);
+      //console.log(ego_convertedPoints);
+      car_box_format_relative = math.concat(rel_x_points, rel_y_points, 1);
+      // Step 2: Draw points on canvas
+
+      var context = canvasTopDown.getContext('2d');
+      context.lineWidth = 3;
+
+      if (convertedPoints.size()[1] == 4) {
+        convertedPoints = math.concat(
+          convertedPoints,
+          convertedPoints.subset(
+            math.index(
+              math.range(0, convertedPoints.size()[0]),
+              0,
+              math.range(0, convertedPoints.size()[2]))
+          ),
+          1
+        )
+      }
+      var referredObjectIx = input[idx]["command_data"]["box_ix"];
+
+      for (var i = 0; i < convertedPoints.size()[0]; i++) {
+
+        if (i == special_index) {
+          context.strokeStyle = "rgba(205,50,50,1)";
+        } else if (i == referredObjectIx) {
+          context.strokeStyle = "rgba(255,228,0,1)";
+        } else {
+          context.strokeStyle = "rgba(47,79,79,1)";
+        }
+        context.beginPath();
+        // If not closed, close it
+        for (var j = 0; j < convertedPoints.size()[1] - 1; j++) {
+          context.moveTo(
+            math.subset(convertedPoints, math.index(i, j, 0)),
+            math.subset(convertedPoints, math.index(i, j, 1))
+          );
+          context.lineTo(
+            math.subset(convertedPoints, math.index(i, j + 1, 0)),
+            math.subset(convertedPoints, math.index(i, j + 1, 1))
+          )
+        }
+        context.stroke();
+      }
+
+      // Draw ego box
+      context.strokeStyle = "rgba(0,255,215,1)";
+      context.beginPath();
+      if (ego_convertedPoints.size()[0] == 4) {
+        ego_convertedPoints = math.concat(
+          ego_convertedPoints,
+          ego_convertedPoints.subset(
+            math.index(
+              0,
+              math.range(0, ego_convertedPoints.size()[1]))
+          ),
+          0
+        )
+      }
+      for (var i = 0; i < ego_convertedPoints.size()[0] - 1; i++) {
+        context.moveTo(
+          math.subset(ego_convertedPoints, math.index(i, 0)),
+          math.subset(ego_convertedPoints, math.index(i, 1))
+        );
+        context.lineTo(
+          math.subset(ego_convertedPoints, math.index(i + 1, 0)),
+          math.subset(ego_convertedPoints, math.index(i + 1, 1))
+        )
+      }
+
+      center = [
+        math.mean(math.subset(ego_convertedPoints, math.index(math.range(0, 4), 0))),
+        math.mean(math.subset(ego_convertedPoints, math.index(math.range(0, 4), 1)))
+      ]
+
+      context.moveTo(
+        center[0],
+        center[1],
+      )
+      context.lineTo(
+        math.subset(ego_convertedPoints, math.index(0, 0)) / 2 + math.subset(ego_convertedPoints, math.index(1, 0)) / 2,
+        math.subset(ego_convertedPoints, math.index(0, 1)) / 2 + math.subset(ego_convertedPoints, math.index(1, 1)) / 2
+      )
+      context.stroke();
+    }
+
+    function getMapToCanvas(map_point, map_patch) {
+      var map_patch_corner_x = map_patch.subset(math.index(0))
+      var map_patch_corner_y = map_patch.subset(math.index(1))
+      var map_patch_width = map_patch.subset(math.index(2)) - map_patch.subset(math.index(0))
+      var map_patch_height = map_patch.subset(math.index(3)) - map_patch.subset(math.index(1))
+
+      var canvasTopDown_width = canvasTopDown.width;
+      var canvasTopDown_height = canvasTopDown.height;
+
+      canvas_point_x = math.multiply(math.divide(math.subtract(map_point[0], map_patch_corner_x), (map_patch_width)), canvasTopDown_width);
+      canvas_point_y = math.multiply(math.subtract(1, math.divide(math.subtract(map_point[1], map_patch_corner_y), (map_patch_height))), canvasTopDown_height);
+      return [canvas_point_x, canvas_point_y]
+    }
+
+    function getCanvasToMap(canvas_point, map_patch) {
+      var map_patch_corner_x = map_patch.subset(math.index(0))
+      var map_patch_corner_y = map_patch.subset(math.index(1))
+      var map_patch_width = map_patch.subset(math.index(2)) - map_patch.subset(math.index(0))
+      var map_patch_height = map_patch.subset(math.index(3)) - map_patch.subset(math.index(1))
+
+      var canvasTopDown_width = canvasTopDown.width;
+      var canvasTopDown_height = canvasTopDown.height;
+
+      map_point_x = math.add(math.divide(math.multiply(canvas_point[0], map_patch_width), canvasTopDown_width), map_patch_corner_x)
+      map_point_y = math.add(math.divide(math.multiply(math.subtract(canvasTopDown_height, canvas_point[1]), map_patch_height), canvasTopDown_height), map_patch_corner_y)
+      return [map_point_x, map_point_y]
+    }
+
+    function getPointInFront(center_point, rot_matrix, distance) {
+      // Facing angle in radians
+      facing_angle = math.atan2(
+        math.subset(rot_matrix, math.index(0, 0)),
+        math.subset(rot_matrix, math.index(0, 1))
+      )
+
+      x_front = math.sin(facing_angle) * distance + center_point[0]
+      y_front = -math.cos(facing_angle) * distance + center_point[1]
+
+      front_point = [x_front, y_front]
+      return front_point
+    }
+
+    function projectPointsToMap(car_end_point_pos) {
+      var points_map = [];
+
+      // points are (a,b)
+      // we need to transform them to global view
+      this.eachItem(point => {
+        points_map.push([point.x, point.y]);
+      });
+
+      if (car_end_point_pos) {
+        points_map.push([car_end_point_pos.x, car_end_point_pos.y])
+      }
+
+      var points_map = math.matrix(points_map)
+      var canvasTopDown_size = math.matrix([canvasTopDown.width, canvasTopDown.height]) // Width, Height
+
+      var map_patch_corner_x = map_patch.subset(math.index(0))
+      var map_patch_corner_y = map_patch.subset(math.index(1))
+      var map_patch_width = map_patch.subset(math.index(2)) - map_patch.subset(math.index(0))
+      var map_patch_height = map_patch.subset(math.index(3)) - map_patch.subset(math.index(1))
+
+      var canvasTopDown_width = canvasTopDown_size.subset(math.index(0))
+      var canvasTopDown_height = canvasTopDown_size.subset(math.index(1))
+
+      var x = points_map.subset(math.index(math.range(0, points_map.size()[0]), 0))
+      var y = points_map.subset(math.index(math.range(0, points_map.size()[0]), 1))
+
+      // x_trans = map_patch_x_left + (x * (map_patch_x_right - map_patch_x_left) / canvasTopDown_width )
+      var x_trans = math.add(math.divide(math.multiply(x, map_patch_width), canvasTopDown_width), map_patch_corner_x)
+      // y_trans = map_path_y_bottom + (canvasTopDown_height - y) * (map_patch_y_top - map_patch_y_bottom) / canvasTopDown_height
+      var y_trans = math.add(math.divide(math.multiply(math.subtract(canvasTopDown_height, y), map_patch_height), canvasTopDown_height), map_patch_corner_y)
+
+      if (points_map.size()[0] == 1) {
+        x_trans = math.matrix([[x_trans]]);
+        y_trans = math.matrix([[y_trans]]);
+      }
+      var points_map = math.concat(x_trans, y_trans, 1)
+      return points_map
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    function createList(extend) {
+      return Object.assign({}, list, { items: [] }, extend);
+    }
+
+    function getClosest(from, minDist) {
+      var closestPoint;
+      this.eachItem(point => {
+        const dist = Math.hypot(from.x - point.x, from.y - point.y);
+        if (dist < minDist) {
+          closestPoint = point;
+          minDist = dist;
+        }
+      });
+      return closestPoint;
+    }
+
+    function getClosestIx(from, minDist) {
+      var closestPoint;
+      var ix = 0;
+      var closestIx = -1;
+      this.eachItem(point => {
+        const dist = Math.hypot(from.x - point.x, from.y - point.y);
+        if (dist < minDist) {
+          closestPoint = point;
+          minDist = dist;
+          closestIx = ix;
+        }
+        ix++;
+      });
+      return closestIx;
+    }
+
+    // this will extend the lines list
+    function getClosestline(from, minDist) {
+      var closestLine;
+      this.eachItem(line => {
+        const dist = distanceLineFromPoint(line, from);
+        if (dist < minDist) {
+          closestLine = line;
+          minDist = dist;
+        }
+      });
+      return closestLine;
+    }
+    function drawLine(line) {
+      topDownCtx.moveTo(points.items[line.p1].x, points.items[line.p1].y);
+      topDownCtx.lineTo(points.items[line.p2].x, points.items[line.p2].y);
+    }
+    function drawLines() { this.eachItem(line => drawLine(line)) }
+
+    var object_elevations;
+    var car_box_format_relative = null;
+    var car_end_point_pos = null;
+
+
+    var object_points;
+    function createObjectPoints() {
+      return createList({
+        getClosest: getClosest,
+        getClosestIx: getClosestIx,
+        projectPointsToMap: projectPointsToMap,
+      });
+    }
+
+    var lines;
+    function createLines() {
+      return createList({
+        getClosest: getClosestline,
+        draw: drawLines,
+      });
+    }
+
+    const mouse = { x: 0, y: 0, button: false, drag: false, dragStart: false, dragEnd: false, dragStartX: 0, dragStartY: 0 }
+    function mouseEvents(e) {
+      // if (play) { return; }
+
+      mouse.x = e.pageX - canvasTopDownOffsetX;
+      mouse.y = e.pageY - canvasTopDownOffsetY;
+      const lb = mouse.button;
+      mouse.button = e.type === "mousedown" ? true : e.type === "mouseup" ? false : mouse.button;
+      if (lb !== mouse.button) {
+        if (mouse.button) {
+          mouse.drag = true;
+          mouse.dragStart = true;
+          mouse.dragStartX = mouse.x;
+          mouse.dragStartY = mouse.y;
+        } else {
+          mouse.drag = false;
+          mouse.dragEnd = true;
+        }
+      }
+    }
+
+    ["down", "up", "move"].forEach(name => document.getElementById('top-down-view').addEventListener("mouse" + name, mouseEvents));
+    // short cut vars
+    var canvasTopDownW;
+    var canvasTopDownH;
+    var canvasTopDownCw;
+    var canvasTopDownCh;
+    var globalTime;
+    var closestLine;
+    var closestPoint;
+    var pointDrag; // true is dragging a point else dragging a line
+    var dragOffsetX;
+    var dragOffsetY;
+    var cursor;
+    var helpCount = 0;
+    const minDist = 10;
+    const minObjDist = 10;
+    const lineStyle = {
+      lineWidth: 2,
+      strokeStyle: "green",
+    }
+    const pointStyle = {
+      lineWidth: 1,
+      strokeStyle: "blue",
+    }
+    const highlightStyle = {
+      lineWidth: 3,
+      strokeStyle: "red",
+    }
+    const font = {
+      font: "18px arial",
+      fillStyle: "black",
+      textAlign: "center",
+    }
+
+
+    // main update function
+    function update(timer) {
+
+      if (document.getElementById("actionOther").checked) {
+        document.getElementById("actionOtherText").style.display = '';
+      } else {
+        document.getElementById("actionOtherText").style.display = 'none';
+      }
+
+      checkTasks()
+      enableSubmit()
+
+      if (canvasTopDown === undefined) {
+        console.log("not initiliased yet!!");
+        requestAnimationFrame(update);
+        return;
+      }
+      cursor = "crosshair";
+      globalTime = timer;
+      topDownCtx.setTransform(1, 0, 0, 1, 0, 0); // reset transform
+      topDownCtx.globalAlpha = 1;           // reset alpha
+      topDownCtx.clearRect(0, 0, canvasTopDownW, canvasTopDownH);
+      var canvasFrontal = document.getElementById('frontal-view-canvas')
+      var context = canvasFrontal.getContext('2d');
+      context.clearRect(0, 0, canvasFrontal.width, canvasFrontal.height);
+
+      if (first_run) {
+        object_centers = input[idx]["frame_data"]["map_objects_center"]
+        object_elevations = input[idx]["frame_data"]["map_objects_elevation"]
+        map_patch = math.matrix(input[idx]["frame_data"]["map_patch"])
+        egopose = input[idx]["frame_data"]["ego_translation"]
+
+        for (i = 0; i < object_centers.length; i++) {
+          object_center = object_centers[i]
+          object_center = getMapToCanvas(object_center, map_patch)
+          object_points.add(Point2(object_center[0], object_center[1]))
+        }
+        first_run = false
+      } else {
+        storeCurrent();
+      }
+
+      if (mouse.drag === false) {
+        closestLine = undefined;
+        closestObject = object_points.getClosest(mouse, minObjDist);
+        closestObjectIx = object_points.getClosestIx(mouse, minObjDist);
+      }
+
+      drawObjectsFrontal(closestObjectIx);
+
+      setStyle(lineStyle);
+      topDownCtx.beginPath();
+      topDownCtx.stroke();
+      setStyle(pointStyle);
+      topDownCtx.beginPath();
+      topDownCtx.stroke();
+
+      // drawPathOnTopDownView()
+      drawObjectsTopDown(closestObjectIx);
+
+      canvasTopDown.style.cursor = cursor;
+
+      requestAnimationFrame(update);
+    }
+
+    $(document).ready(function () {
+      main();
+      requestAnimationFrame(update);
+    })
+    //////////////////// END OF CANVAS CODE
+
+    // Update the index, and save the text in the text area and render new data.
+    function set_idx(new_idx, firstCall) {
+      if (new_idx < 0 || new_idx >= num_images) return;
+
+      // back up current data.
+      if (firstCall !== true) {
+        storeCurrent();
+      }
+
+      // increment index.
+      idx = new_idx;
+
+      // Render new data.
+      // Get new points
+      first_run = true;
+      canvasTopDown = undefined;
+
+      // Uncheck boxes
+      if (firstCall !== true) {
+        document.getElementById("actionLeft").checked = false;
+        document.getElementById("actionRight").checked = false;
+        document.getElementById("actionChangeLaneLeft").checked = false;
+        document.getElementById("actionChangeLaneRight").checked = false;
+        document.getElementById("actionULeft").checked = false;
+        document.getElementById("actionURight").checked = false;
+        document.getElementById("actionPark").checked = false;
+        document.getElementById("actionStop").checked = false;
+        document.getElementById("actionPickUp").checked = false;
+        document.getElementById("actionContinue").checked = false;
+
+        document.getElementById("actionOvertake").checked = false;
+        document.getElementById("actionDropOff").checked = false;
+        document.getElementById("actionFollow").checked = false;
+        document.getElementById("actionSlowDown").checked = false;
+        document.getElementById("actionWait").checked = false;
+        document.getElementById("actionApproach").checked = false;
+        document.getElementById("actionMoveAway").checked = false;
+        document.getElementById("actionOther").checked = false;
+        document.getElementById("actionOtherText").value = "";
+      }
+
+      if (createdAnnotationsOutputList.length > idx) {
+        document.getElementById("actionLeft").checked = createdAnnotationsOutputList[idx]["intent"]["actionLeft"];
+        document.getElementById("actionRight").checked = createdAnnotationsOutputList[idx]["intent"]["actionRight"];
+        document.getElementById("actionChangeLaneLeft").checked = createdAnnotationsOutputList[idx]["intent"]["actionChangeLaneLeft"];
+        document.getElementById("actionChangeLaneRight").checked = createdAnnotationsOutputList[idx]["intent"]["actionChangeLaneRight"];
+        document.getElementById("actionULeft").checked = createdAnnotationsOutputList[idx]["intent"]["actionULeft"];
+        document.getElementById("actionURight").checked = createdAnnotationsOutputList[idx]["intent"]["actionURight"];
+        document.getElementById("actionPark").checked = createdAnnotationsOutputList[idx]["intent"]["actionPark"];
+        document.getElementById("actionStop").checked = createdAnnotationsOutputList[idx]["intent"]["actionStop"];
+        document.getElementById("actionPickUp").checked = createdAnnotationsOutputList[idx]["intent"]["actionPickUp"];
+                document.getElementById("actionContinue").checked = createdAnnotationsOutputList[idx]["intent"]["actionContinue"];
+
+        document.getElementById("actionOvertake").checked = createdAnnotationsOutputList[idx]["intent"]["actionOvertake"];
+        document.getElementById("actionDropOff").checked = createdAnnotationsOutputList[idx]["intent"]["actionDropOff"];
+        document.getElementById("actionFollow").checked = createdAnnotationsOutputList[idx]["intent"]["actionFollow"];
+        document.getElementById("actionSlowDown").checked = createdAnnotationsOutputList[idx]["intent"]["actionSlowDown"];
+        document.getElementById("actionWait").checked = createdAnnotationsOutputList[idx]["intent"]["actionWait"];
+        document.getElementById("actionApproach").checked = createdAnnotationsOutputList[idx]["intent"]["actionApproach"];
+        document.getElementById("actionMoveAway").checked = createdAnnotationsOutputList[idx]["intent"]["actionMoveAway"];
+        document.getElementById("actionOther").checked = createdAnnotationsOutputList[idx]["intent"]["actionOther"];
+        document.getElementById("actionOtherText").value = createdAnnotationsOutputList[idx]["intent"]["actionOtherText"];
+      }
+
+      object_points = createObjectPoints();
+      lines = createLines();
+      render();
+
+      // If the UI is enabled, enable or disable the buttons depending on
+      // the index.
+      if (enabled) {
+        var prev_btn = $('#prev-btn');
+        var next_btn = $('#next-btn');
+        prev_btn.prop('disabled', true);
+        next_btn.prop('disabled', true);
+        if (idx > 0) {
+          prev_btn.prop('disabled', false);
+        }
+        if (idx < num_images - 1) next_btn.prop('disabled', false);
+      }
+
+      // Refresh the counter.
+      $('.counter-top').text(idx + 1);
+      $('.counter-bottom').text(num_images);
+    }
+
+    function storeCurrent() {
+      // Storing the current points
+
+      var out = {
+        "url": input[idx]["url"],
+        "top-down": input[idx]["top-down"],
+        "command_data": input[idx]["command_data"],
+        "frame_data_url": input[idx]["frame_data_url"],
+        "command_token": input[idx]["command_data"]["command_token"],
+        "command_ix": input[idx]["command_data"]["command_ix"],
+        "split": input[idx]["command_data"]["split"],
+        "final_car_destination": "TODO",
+        "canvas": {
+          "width": canvasTopDown.width,
+          "height": canvasTopDown.height
+        },
+        "intent": {
+          "actionLeft": document.getElementById("actionLeft").checked,
+          "actionRight": document.getElementById("actionRight").checked,
+          "actionChangeLaneLeft": document.getElementById("actionChangeLaneLeft").checked,
+          "actionChangeLaneRight": document.getElementById("actionChangeLaneRight").checked,
+          "actionULeft": document.getElementById("actionULeft").checked,
+          "actionURight": document.getElementById("actionURight").checked,
+          "actionPark": document.getElementById("actionPark").checked,
+          "actionStop": document.getElementById("actionStop").checked,
+          "actionPickUp": document.getElementById("actionPickUp").checked,
+          "actionContinue": document.getElementById("actionContinue").checked,
+          "actionOvertake": document.getElementById("actionOvertake").checked,
+          "actionDropOff": document.getElementById("actionDropOff").checked,
+          "actionFollow": document.getElementById("actionFollow").checked,
+          "actionSlowDown": document.getElementById("actionSlowDown").checked,
+          "actionWait": document.getElementById("actionWait").checked,
+          "actionApproach": document.getElementById("actionApproach").checked,
+          "actionMoveAway": document.getElementById("actionMoveAway").checked,
+          "actionOther": document.getElementById("actionOther").checked,
+          "actionOtherText": (document.getElementById("actionOther").checked ? document.getElementById("actionOtherText").value : ""),
+        },
+      }
+      if (createdAnnotationsOutputList.length > idx) {
+        createdAnnotationsOutputList[idx] = out;
+      } else {
+        createdAnnotationsOutputList.push(out);
+      }
+
+    }
+
+    function checkTasks() {
+
+      any_checked_intent = false
+
+      if (document.getElementById("actionLeft").checked) { any_checked_intent = true }
+      if (document.getElementById("actionRight").checked) { any_checked_intent = true }
+      if (document.getElementById("actionChangeLaneLeft").checked) { any_checked_intent = true }
+      if (document.getElementById("actionChangeLaneRight").checked) { any_checked_intent = true }
+      if (document.getElementById("actionULeft").checked) { any_checked_intent = true }
+      if (document.getElementById("actionURight").checked) { any_checked_intent = true }
+      if (document.getElementById("actionPark").checked) { any_checked_intent = true }
+      if (document.getElementById("actionStop").checked) { any_checked_intent = true }
+      if (document.getElementById("actionPickUp").checked) { any_checked_intent = true }
+      if (document.getElementById("actionContinue").checked) { any_checked_intent = true }
+      if (document.getElementById("actionOvertake").checked) { any_checked_intent = true }
+      if (document.getElementById("actionDropOff").checked) { any_checked_intent = true }
+      if (document.getElementById("actionFollow").checked) { any_checked_intent = true }
+      if (document.getElementById("actionSlowDown").checked) { any_checked_intent = true }
+      if (document.getElementById("actionWait").checked) { any_checked_intent = true }
+      if (document.getElementById("actionApproach").checked) { any_checked_intent = true }
+      if (document.getElementById("actionMoveAway").checked) { any_checked_intent = true }
+      if (document.getElementById("actionOther").checked && document.getElementById("actionOtherText").value) { any_checked_intent = true }
+
+      if (any_checked_intent) {
+        document.getElementById("task_intent").style.backgroundColor = "#5ae406"
+      } else {
+        document.getElementById("task_intent").style.backgroundColor = "#f93005"
+      }
+
+    }
+
+    function enableSubmit() {
+      // Enable the submit button only if all the frames are annotated
+      $('#submit-btn').prop('disabled', false);
+      if (createdAnnotationsOutputList.length < num_images) {
+        $('#submit-btn').prop('disabled', true);
+      } else {
+        incomplete_anno_indices = []
+        for (var i = 0; i < num_images; i++) {
+          createdAnnotationsOutput = createdAnnotationsOutputList[i];
+          any_checked_intent = false
+
+          createdAnnotationsOutputActions = createdAnnotationsOutput["intent"];
+          if (createdAnnotationsOutputActions["actionLeft"]) { any_checked_intent = true }
+          if (createdAnnotationsOutputActions["actionRight"]) { any_checked_intent = true }
+          if (createdAnnotationsOutputActions["actionChangeLaneLeft"]) { any_checked_intent = true }
+          if (createdAnnotationsOutputActions["actionChangeLaneRight"]) { any_checked_intent = true }
+          if (createdAnnotationsOutputActions["actionULeft"]) { any_checked_intent = true }
+          if (createdAnnotationsOutputActions["actionURight"]) { any_checked_intent = true }
+          if (createdAnnotationsOutputActions["actionPark"]) { any_checked_intent = true }
+          if (createdAnnotationsOutputActions["actionStop"]) { any_checked_intent = true }
+          if (createdAnnotationsOutputActions["actionPickUp"]) { any_checked_intent = true }
+          if (createdAnnotationsOutputActions["actionContinue"]) { any_checked_intent = true }
+          if (createdAnnotationsOutputActions["actionOvertake"]) { any_checked_intent = true }
+          if (createdAnnotationsOutputActions["actionDropOff"]) { any_checked_intent = true }
+          if (createdAnnotationsOutputActions["actionFollow"]) { any_checked_intent = true }
+          if (createdAnnotationsOutputActions["actionSlowDown"]) { any_checked_intent = true }
+          if (createdAnnotationsOutputActions["actionWait"]) { any_checked_intent = true }
+          if (createdAnnotationsOutputActions["actionApproach"]) { any_checked_intent = true }
+          if (createdAnnotationsOutputActions["actionMoveAway"]) { any_checked_intent = true }
+          if (createdAnnotationsOutputActions["actionOther"] && createdAnnotationsOutputActions["actionOtherText"]) { any_checked_intent = true }
+
+
+          if (any_checked_intent == false) {
+            $('#submit-btn').prop('disabled', true);
+            if (i != num_images - 1) { incomplete_anno_indices.push(i + 1) }
+          }
+        }
+        if ((incomplete_anno_indices.length) && (not_alerted) && (idx == num_images - 1)) {
+          not_alerted = false;
+          alert("You have reached the last command, but there are incomplete annotations on previous commands: " + incomplete_anno_indices)
+        }
+      }
+    }
+
+    // Enable the UI.
+    function enable_hit() {
+      enabled = true;
+
+      // Enable components
+      $('#next-btn').click(function () {
+        set_idx(idx + 1);
+      });
+      $('#prev-btn').click(function () {
+        set_idx(idx - 1);
+        not_alerted = true;
+      });
+
+      // Set up submit handler.
+      easyturk.setupSubmit();
+      $('#submit-btn').click(function () {
+        storeCurrent();
+
+        // otherwise we're good. HIT done!
+        easyturk.setOutput(createdAnnotationsOutputList);
+      });
+    }
+  </script>
+</body>
+
+</html>

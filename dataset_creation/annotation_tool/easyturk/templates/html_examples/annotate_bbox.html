@@ -1,0 +1,427 @@
+<html>
+  <head>
+    <title>Annotate objects in images</title>
+    <!-- easyturk depends on these libraries -->
+    <script src='https://cdnjs.cloudflare.com/ajax/libs/jquery/2.1.1/jquery.min.js'></script>
+    <script src='https://cdnjs.cloudflare.com/ajax/libs/json3/3.3.2/json3.min.js'></script>    
+
+    <!-- end of required libraries -->
+    <script src='https://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.min.js'></script>
+    <script src='https://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.6.0/underscore-min.js'></script>
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css" rel="stylesheet">
+    <script src='https://cdnjs.cloudflare.com/ajax/libs/backbone.js/1.1.2/backbone-min.js'></script>
+
+    <style>
+      .obj-btn {
+        margin-top: 20px;
+        margin-top: 20px;
+        font-size: 15pt;
+      }
+      .obj-name {
+        font-size: 20pt;
+        width: 500px;
+        margin-top: 20px;
+        margin-top: 20px;
+        margin-bottom: 10px;
+        height: 50px;
+      }
+      #button-div {
+        margin-bottom: 10px;
+      }
+      #counter {
+        margin: 0 10px;
+        font-size: 20pt;
+        font-weight: bold;
+      }
+      .desc {
+        font-size: 12pt;
+      }
+    </style>
+
+  </head>
+
+  <body>
+    <div class='container'>
+      <h2>Describe image regions with text snippets</h2>
+
+      <div class="desc">
+        Hi there, we need your help annotating objects in images.<br>
+
+        <ul>
+          <li>Draw a box with your mouse around an object in the image and then tag it with the name of the object.</li>
+          <li>We will show you images one by one and ask you to annoate a certain number of objects. Repeat for a few images to complete this HIT.</li>
+          <li>
+            Each box should be <b>tight</b> around its object, and should <b>completely cover</b> the object.
+            <div class='row text-center'>
+              <div class='col-md-4 bbox-example bg-success'>
+                <b>Good:</b>
+                <br>
+                <img class='img-responsive' src='https://visualgenome.org/static/images/bounding_box_examples/tight_correct.jpg'>
+              </div>
+              <div class='col-md-4 bbox-example bg-danger'>
+                <b>Bad:</b>
+                <br>
+                <img class='img-responsive' src='https://visualgenome.org/static/images/bounding_box_examples/tight_wrong1.jpg'>
+              </div>
+              <div class='col-md-4 bbox-example bg-danger'>
+                <b>Bad:</b>
+                <br>
+                <img class='img-responsive' src='https://visualgenome.org/static/images/bounding_box_examples/tight_wrong2.jpg'>
+              </div>
+            </div>
+          </li>
+          <li>
+            Each box should only cover the <b>visible part</b> of all objects mentioned in the text snippet.
+            <div class='row text-center'>
+              <div class='col-md-4 col-md-offset-2 bbox-example bg-success'>
+                <b>Good:</b>
+                <br>
+                <img class='img-responsive' src='https://visualgenome.org/static/images/bounding_box_examples/vis_correct.jpg'>
+              </div>
+              <div class='col-md-4 bbox-example bg-danger'>
+                <b>Bad:</b>
+                <br>
+                <img class='img-responsive' src='https://visualgenome.org/static/images/bounding_box_examples/vis_wrong.jpg'>
+              </div>
+            </div>
+          </li>
+          <li>
+            Objects that take up a large portion of the image should be <b>completey covered</b>
+            by their boxes, such as the boxes for the <b>road</b> below:
+            <div class='row text-center'>
+              <div class='col-md-4 col-md-offset-2 bbox-example bg-success'>
+                <b>Good:</b>
+                <br>
+                <img class='img-responsive' src='https://visualgenome.org/static/images/bounding_box_examples/large-good.png'>
+              </div>
+              <div class='col-md-4 bbox-example bg-danger'>
+                <b>Bad:</b>
+                <br>
+                <img class='img-responsive' src='https://visualgenome.org/static/images/bounding_box_examples/large-bad.png'>
+              </div>
+            </div>
+          </li>
+        </ul>
+
+      </div>
+
+    <hr>
+
+    <div class="container">
+      <h3>Your task is below</h3>
+    </div>
+    <div class='container-fluid'>
+      <div class='row'>
+        <div class='col-xs-12 text-center'>
+          <div id='image-container'>
+          </div>
+        </div>
+        <div id='object-list' class='col-xs-12 text-center'>
+        </div>
+      </div>
+      <div class='row'>
+        <div class='col-xs-12 text-center' id='button-div'>
+          <button id='prev-btn' tabindex="1" class='btn btn-lg btn-primary' disabled>Back</button>
+          <span id='counter'>
+            <span class='counter-top'></span> / <span class='counter-bottom'></span>
+          </span>
+          <button id='next-btn' tabindex="0" class='btn btn-lg btn-primary' disabled>Next</button>
+        </div>
+      </div>
+    </div>
+
+
+
+<!--IMPORTANT: This import contains all the functions you need to read in your input data and send back worker outputs.-->  
+{% include "easyturk.html" %}
+<script>
+    {% include "javascript/bbox-drawer.js" %}
+</script>
+
+<script>
+    var DEFAULT_INPUT = [{'url': 'https://cs.stanford.edu/people/rak248/VG_100K/2349753.jpg', 'num_objects': 2},
+                         {'url': 'https://farm9.staticflickr.com/8449/7965295478_c80e1f182e_b.jpg', 'num_objects': 1},
+                         {'url': 'https://s3.amazonaws.com/visualgenomeimages/flickr_coco_1k_2/8715776190_f29e77aa10_b.jpg', 'num_objects': 1}];
+
+    // If this is a HIT on AMT, then replace the default input with the real input.
+    var input = easyturk.getInput(DEFAULT_INPUT);
+    var num_images = input.length;
+
+    // Some variables to track state of the HIT.
+    var idx = 0;
+    var enabled = false;
+    var output = [];
+    var bb = null;
+
+    function containsNonLatinCodepoints(s) {
+        return /[^\u0000-\u00ff]/.test(s);
+    }
+
+    function main() {
+
+        // Enable the UI if the HIT is not in preview mode.
+        if (true || !easyturk.isPreview()) {
+            enable_hit();
+        }
+
+        // Set up empty description blobs.
+        for(var k = 0; k < num_images; k++) {
+            input[k].objects = [];
+            for (var l = 0; l < input[k].num_objects; l++) {
+                input[k].objects.push({'name': '', 'rect': null});
+            }
+            output.push(input[k]);
+        };
+
+        // Load the images.
+        _.each(output, function(input_elem) {
+            var imgUrl = input_elem['url'];
+            var img = new Image();
+            img.onload = function() { 
+                output[idx].image_width = img.width;
+            };
+            img.src = imgUrl;
+        });
+
+        // Render the objects and the bounding box interaction.
+        set_idx(idx);
+    }
+
+    function add_existing_boxes(bb) {
+        /** Draws the existing bounding boxes to the image.
+         *
+         * Args:
+         *   bb: ETJS.BBoxDrawer instance.
+         */
+        for (var k = 0; k < output[idx].num_objects; k++) {
+            obj = output[idx].objects[k];
+            if (obj.rect != null) {
+                index = bb.addStaticBox(obj.rect);
+                obj.static_index = index;
+            }
+        }
+    }
+
+    // Use the current index to update the image and description.
+    function render() {
+        if (bb != null) {
+            bb.disable();
+            bb.remove();
+        }
+        $('#image-container').html('');
+        options = {}
+        if (output[idx].image_width != null) {
+            options.image_width = output[idx].image_width;
+        }
+        bb = new ETJS.BBoxDrawer($('#image-container'), input[idx]['url'], 1000, options);
+        bb.reset();
+        add_existing_boxes(bb);
+
+        // Set up the object area.
+        var object_list = $('#object-list');
+        object_list.empty();
+        for (var k = 0; k < output[idx].num_objects; k++) {
+
+            // Render text area.
+            var obj_row = $('<div class=\'row\'>');
+            object_list.append(obj_row);
+            var text_col = $('<div class=\'col-md-8\' align=\'right\'>');
+            obj_row.append(text_col);
+            var text_area = $('<input id=\'obj_' + idx + '_' + k + '\' class=\'form-control tb-margin obj-name\'>');
+            text_col.append(text_area);
+            obj = output[idx]['objects'][k];
+            if (obj.name != null && obj.name != '') {
+                text_area.val(obj.name);
+            } else {
+                text_area.prop('placeholder', 'Enter object name here');
+            }
+
+            // Create buttons elements.
+            var btn_col = $('<div class=\'col-md-4\' align=\'left\'>');
+            obj_row.append(btn_col);
+
+            var redraw_btn = $('<button id=\'redraw-btn_' + idx + '_' + k + '\' class=\'btn btn-lg btn-danger obj-btn\'>');
+            redraw_btn.text('Redraw box');
+
+            var btn = $('<button id=\'draw-btn_' + idx + '_' + k + '\' class=\'btn btn-lg btn-success obj-btn\'>');
+            btn.text('Draw box');
+
+            // Setup save interaction.
+            var save_btn = $('<button id=\'save-btn_' + idx + '_' + k + '\' class=\'btn btn-lg btn-primary obj-btn\'>');
+            save_btn.text('Save box');
+            save_btn.click(function(btn_col, save_btn, redraw_btn, idx, k) {
+                // Get the drawn bbox.
+                // If it is not null, save it to output.
+                // Remove the bbox from bb box variable.
+                // Add the bbox to the bb static_box list.
+                // Save the static_box index so that we can delete it later.
+                // Remove the save button.
+                // Add the redraw button.
+                return function() {
+                    box = bb.getBoxPosition();
+                    if (box != null) {
+                        output[idx].objects[k].rect = box;
+                        bb.removeBox();
+                        //index = bb.addStaticBox(box);
+                        //output[idx].objects[k].static_index = index;
+                        storeCurrent();
+                        render();
+                    }
+                }
+            }(btn_col, save_btn, redraw_btn, idx, k));
+
+            // Setup redraw interaction.
+            redraw_btn.click(function(btn_col, redraw_btn, save_btn, idx, k) {
+                // Get the static box index to delete.
+                // Delete the static box.
+                // Remove btn from obj_col.
+                // Add save_btn to obj_col.
+                // Reset drawing.
+                return function() {
+                    index = output[idx].objects[k].static_index;
+                    bb.removeStaticBox(index);
+                    redraw_btn.remove();
+                    btn_col.append(save_btn);
+                    bb.enable();
+                    bb.reset();
+                }
+            }(btn_col, redraw_btn, save_btn, idx, k));
+
+
+            if (obj.rect != null) {
+                // Setup redraw button.
+                btn_col.append(redraw_btn);
+                bb.restoring();
+                bb.setBoxPosition(obj.rect);
+            } else {
+                // Draw button.
+                btn_col.append(btn);
+                btn.click(function(btn_col, btn, save_btn) {
+                    return function() {
+                        btn.remove();
+                        btn_col.append(save_btn);
+                        bb.enable();
+                        bb.reset();
+                    }
+                }(btn_col, btn, save_btn));
+            }
+        }
+    }
+
+    // Update the index, and save the text in the text area and render new data.
+    function set_idx(new_idx) {
+        if (new_idx < 0 || new_idx >= num_images) return;
+
+        // back up current data.
+        storeCurrent();
+
+        // increment index.
+        idx = new_idx;
+
+        // Render new data.
+        render();
+
+        // If the UI is enabled, enable or disable the buttons depending on
+        // the index.
+        if (enabled) {
+            var prev_btn = $('#prev-btn');
+            var next_btn = $('#next-btn');
+            prev_btn.prop('disabled', true);
+            next_btn.prop('disabled', true);
+            if (idx > 0) {
+                prev_btn.prop('disabled', false);
+            }
+            if (idx < num_images - 1) next_btn.prop('disabled', false);
+        }
+
+        // Refresh the counter.
+        $('.counter-top').text(idx + 1);
+        $('.counter-bottom').text(num_images);
+    }
+
+    function storeCurrent() {
+        var image = output[idx];
+        for (var k = 0; k < image.num_objects; k++) {
+            obj = image.objects[k];
+            obj.name = $('#obj_' + idx + '_' + k).val();
+        }
+    }
+
+    function repeated_object(objects) {
+        /**Indicates if the object is a repeat.
+         * 
+         * Args:
+         *    objects: An list of objects.
+         *
+         * Returns:
+         *    True if two objects have high IoU and same name.
+         */
+        var max_iou = 0;
+        var references = [];
+        if (objects == null) {
+            return False
+        }
+        for (var r = 0; r < objects.length; r++) {
+            for (var s = r + 1; s < objects.length; s++) {
+                if (objects[r].name != objects[s].name) {
+                    continue;
+                }
+                iou = ETJS.intersection_over_union(
+                    objects[r].rect, objects[s].rect);
+                if (iou > 0.85) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    // Enable the UI.
+    function enable_hit() {
+        enabled = true;
+
+        // Enable components
+        $('#next-btn').click(function() {
+            set_idx(idx + 1);
+        });
+        $('#prev-btn').click(function() {
+            set_idx(idx - 1)
+        });
+        
+        // Set up submit handler.
+        $('#submit-btn').prop('disabled', false);
+        easyturk.setupSubmit();
+        $('#submit-btn').click(function() {
+            storeCurrent();
+
+            // validate all descriptions
+            for(var i = 0; i < num_images; i++) {
+                if (output[i].objects.length < output[i].num_objects) {
+                    alert('Error: You did not create enough objects.')
+                }
+                for (var j = 0; j < output[i].num_objects; j++) {
+                    obj = output[i].objects[j]
+                    if (obj.name == null || obj.name == '') {
+                        alert('Error: You did not fill in a object name in image ' + (i + 1) + '!'); 
+                        return false;
+                    }
+                    if (containsNonLatinCodepoints(obj.name)) {
+                        alert("Error: Please write a different phrase for " + (i + 1) + "! '" + obj.name + "' contains a unicode character."); 
+                        return false;
+                    }
+                    if(obj.rect == null) {
+                        alert('Error: You must draw a bounding box for region ' + (i + 1) + '! (Use your mouse on the image.)'); 
+                        return false; 
+                    }
+                }
+            }
+
+            // otherwise we're good. HIT done!
+            easyturk.setOutput(output);
+      });
+    }
+
+main();
+</script>
+</body>
+</html>

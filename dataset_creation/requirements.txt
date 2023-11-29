@@ -1,0 +1,9 @@
+numpy
+Pillow
+tqdm
+cv2
+nuscenes-devkit
+descartes
+matplotlib
+pyquaternion
+shapely

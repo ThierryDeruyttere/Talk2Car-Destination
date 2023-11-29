@@ -1,0 +1,1937 @@
+<html>
+
+<head>
+  <title>Annotate objects in images</title>
+  <!-- easyturk depends on these libraries -->
+  <script src='https://cdnjs.cloudflare.com/ajax/libs/jquery/2.1.1/jquery.min.js'></script>
+  <script src='https://cdnjs.cloudflare.com/ajax/libs/json3/3.3.2/json3.min.js'></script>
+
+  <!-- end of required libraries -->
+  <script src='https://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.min.js'></script>
+
+  <script src='https://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.6.0/underscore-min.js'></script>
+  <link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css" rel="stylesheet">
+  <script src='https://cdnjs.cloudflare.com/ajax/libs/backbone.js/1.1.2/backbone-min.js'></script>
+  <script src=https://cdnjs.cloudflare.com/ajax/libs/mathjs/3.3.0/math.min.js></script>
+  <script src="https://cdn.jsdelivr.net/gh/nicolaspanel/numjs@0.15.1/dist/numjs.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.2/css/all.min.css"
+        integrity="sha512-HK5fgLBL+xu6dm/Ii3z4xhlSUyZgTT9tuc/hSrtw6uzJOvgRr2a9jyxxT1ely+B+xFAmJKVSTbpM/CuL7qxO8w=="
+        crossOrigin="anonymous"/>
+  <style>
+    .obj-btn {
+      margin-top: 20px;
+      margin-top: 20px;
+      font-size: 15pt;
+    }
+
+    .obj-name {
+      font-size: 20pt;
+      width: 500px;
+      margin-top: 20px;
+      margin-top: 20px;
+      margin-bottom: 10px;
+      height: 50px;
+    }
+
+    #button-div {
+      margin-bottom: 10px;
+    }
+
+    #counter {
+      margin: 0 10px;
+      font-size: 20pt;
+      font-weight: bold;
+    }
+
+    .desc {
+      font-size: 12pt;
+    }
+  </style>
+
+</head>
+
+<style type='text/css'>
+  .my-legend .legend-title {
+    text-align: left;
+    margin-bottom: 5px;
+    font-weight: bold;
+    font-size: 90%;
+  }
+
+  .my-legend .legend-scale ul {
+    margin: 0;
+    margin-bottom: 5px;
+    padding: 0;
+    float: left;
+    list-style: none;
+  }
+
+  .my-legend .legend-scale ul li {
+    font-size: 80%;
+    list-style: none;
+    margin-left: 0;
+    line-height: 18px;
+    margin-bottom: 2px;
+  }
+
+  .my-legend ul.legend-labels li span {
+    display: block;
+    float: left;
+    height: 16px;
+    width: 30px;
+    margin-right: 5px;
+    margin-left: 0;
+    border: 1px solid #999;
+  }
+
+  .my-legend .legend-source {
+    font-size: 70%;
+    color: #999;
+    clear: both;
+  }
+
+  .my-legend a {
+    color: #777;
+  }
+
+  td {
+    font-size: 10pt;
+  }
+
+  .card {
+    border: 2px solid rgb(147, 148, 148);
+    margin-bottom: 1em;
+  }
+
+  /*tbody {*/
+  /*  display: block;*/
+  /*  border: 2px solid rgb(9, 34, 252);*/
+  /*  border-collapse: separate;*/
+  /*  border-spacing: 4px;*/
+  /*}*/
+
+  p {
+    margin-bottom: 0em;
+    margin-top: 0em;
+  }
+</style>
+
+<body>
+<div class='container'>
+  <h4><b>Specify a command that describes the path that the car took.</b></h4>
+
+  <div class='row'>
+    <div class='col-xs-7 text-center'>
+      <div id='image-container'>
+        <img style='width:100%; height:auto; position:absolute; z-index:1;' id='frontal-view'>
+        <canvas class="video" id="frontal-view-canvas" style="position:relative; z-index:20;">
+        </canvas>
+      </div>
+      <div class="col-xs-2">
+        <button class='play-button'>Play</button>
+      </div>
+      <div class="col-xs-10">
+        <input type='range' min='1' max='100' value='50' class='slider' id='video-slider'>
+      </div>
+    </div>
+
+    <div class='col-xs-5 text-center'>
+      <div id='top-down-container'>
+        <img style='width:90%; height:auto; position:absolute;z-index:1;' id='top-down-view-hidden'>
+        <canvas class="video" id="top-down-view" style="position:relative; z-index:20;">
+        </canvas>
+      </div>
+    </div>
+
+  </div>
+
+  <div class='col-xs-8'>
+    <div class='legend-title'><b>Command:</b></div>
+    <div><input type="text" id="commandBox" name="commandBox" placeholder="Type command..." style='width:100%;'
+                cols="40"/>
+    </div>
+    <div id='instructions'
+         style="font-size:10; font-style:normal; background-color: #ebb5c5; border: 1px solid #f12b2b; width:100%;">
+      <br/>
+      <p style="">
+        <b>
+        The goal of this task is to give commands to the self-driving car for the path that the car will follow in the future.
+        <br/>
+        <h5>Important! The end point of the path should be clear from your command!
+          Commands such as 'slow down for biker' are not very informative where the end point should be.
+          'Stop next to the first tree' is way more informative of where the end position is.
+          Extra tip: once you give a command, see if you could precisely pin-point the end position on the top-down view solely with the command and the frontal view.
+          If not, you should probably adapt the command.
+        </h5>
+        We want you to do the following (<b>a video with instructions can also be found
+        <a style="font-size:12px;" href="https://youtu.be/TVI6Yf4x3Ho">here</a></b>):
+      </p>
+      <!--<p style="color: #2e6c80; font-size:12;"><b>Task:</b></p>-->
+      <ul>
+        <li>
+          Watch the full video.
+        </li>
+        <li>
+          Select a frame to create a command for.
+        </li>
+        <li>
+          Write down a command, the actions that need to be performed and if it is legal or not.
+        </li>
+        <li>
+          Then, on the top-down view, select a point in the path where your command would be fully executed. <br/>
+          You select this end by hovering over the point in the top-down view and then pressing "s" on your keyboard.<br/>
+          Important: this end point should be deductible from your command.
+        </li>
+        <li>
+          Finally, you can store the command by pressing on "Store Frame Data".
+        </li>
+        <li>
+          Create as many original commands as you want.
+          For every accepted command we will pay you a bonus of 0.08$.
+          Commands that are just repeated will only be accepted once.
+        </li>
+      </ul>
+    </div>
+
+    <div class='legend-title'><b>Actions:</b></div>
+    <div class='col-xs-3'>
+      <div>
+        <input id="actionLeft" type="checkbox" name="actionLeft"/>
+        <label htmlFor="actionLeft" style="font-size:10;">Turn Left</label>
+      </div>
+      <div>
+        <input id="actionRight" type="checkbox" name="actionRight"/>
+        <label htmlFor="actionRight" style="font-size:10;">Turn Right</label>
+      </div>
+      <div>
+        <input id="actionChangeLaneLeft" type="checkbox" name="actionChangeLaneLeft"/>
+        <label htmlFor="actionChangeLaneLeft" style="font-size:10;">Change Lane Left</label>
+      </div>
+      <div>
+        <input id="actionChangeLaneRight" type="checkbox" name="actionChangeLaneRight"/>
+        <label htmlFor="actionChangeLaneRight" style="font-size:10;">Change Lane Right</label>
+      </div>
+    </div>
+    <div class='col-xs-2'>
+      <div>
+        <input id="actionULeft" type="checkbox" name="actionULeft"/>
+        <label htmlFor="actionULeft" style="font-size:10;">U-Turn Left</label>
+      </div>
+      <div>
+        <input id="actionURight" type="checkbox" name="actionURight"/>
+        <label htmlFor="actionURight" style="font-size:10;">U-Turn Right</label>
+      </div>
+      <div>
+        <input id="actionPark" type="checkbox" name="actionPark"/>
+        <label htmlFor="actionPark" style="font-size:10;">Park</label>
+      </div>
+      <div>
+        <input id="actionStop" type="checkbox" name="actionStop"/>
+        <label htmlFor="actionStop" style="font-size:10;">Stop</label>
+      </div>
+    </div>
+    <div class='col-xs-4'>
+      <div>
+        <input id="actionFollow" type="checkbox" name="actionFollow"/>
+        <label htmlFor="actionFollow" style="font-size:10;">Follow</label>
+      </div>
+      <div>
+        <input id="actionOther" type="checkbox" name="actionOther"/>
+        <label htmlFor="actionOther" style="font-size:10;">Other</label>
+        <input type="text" id="actionOtherText" name="actionOtherText" placeholder="Which other..."/>
+      </div>
+    </div>
+
+    <div class='col-xs-3'>
+      <div class='legend-title'><b>Legality:</b></div>
+      <div>
+        <input id="legalityLegal" type="radio" name="legality" value="legal"/>
+        <label htmlFor="legalityLegal" style="font-size:10;">Legal/Possible</label>
+      </div>
+      <div>
+        <input id="legalityIllegal" type="radio" name="legality" value="illegal"/>
+        <label htmlFor="legalityIllegal" style="font-size:10;">Illegal/Impossible</label>
+      </div>
+    </div>
+  </div>
+
+
+  <div class='col-xs-4'>
+    <div class='my-legend'>
+      <div class='row'>
+        <div class='legend-title'>Tasks:</div>
+        <div class='legend-scale'>
+          <ul class='legend-labels'>
+            <li>
+              <input type="text" id="task_end_point" value="Selected end point" style="font-weight:bold;"
+                     readOnly>
+            </li>
+            <li>
+              <input type="text" id="task_command" value="Written command" style="font-weight:bold;"
+                     readOnly>
+            </li>
+            <li>
+              <input type="text" id="task_action" value="Selected action" style="font-weight:bold;"
+                     readOnly>
+            </li>
+            <li>
+              <input type="text" id="task_feasibility" value="Indicated feasibility"
+                     style="font-weight:bold;"
+                     readonly>
+            </li>
+          </ul>
+        </div>
+        <button id='store-frame-btn' tabIndex="0" class='btn btn-lg btn-primary' disabled>Store Frame Data
+        </button>
+        <button id='end-edit-btn' tabIndex="0" class='btn btn-lg btn-primary' disabled>End Edit
+        </button>
+      </div>
+    </div>
+
+    <div class='my-legend'>
+      <div class='row'>
+        <div class='legend-title'>Generated Commands:</div>
+        <div id="commands-table"></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+
+<!--IMPORTANT: This import contains all the functions you need to read in your input data and send back worker outputs.-->
+{% include "easyturk.html" %}
+
+<script>
+
+  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+  var DEFAULT_INPUT = {
+    "video_data": {
+      "max_frame_ind": 125
+    },
+    "frontal": "https://lyft-extracted.s3.eu-west-3.amazonaws.com/train/a6afe4a83e2c29d41f7b31159449458bb5acc5fcc95feadaf19110de6b6eeacc/frontal_ix.jpg",
+    "top-down": "https://lyft-extracted.s3.eu-west-3.amazonaws.com/train/a6afe4a83e2c29d41f7b31159449458bb5acc5fcc95feadaf19110de6b6eeacc/top_down_ix.png",
+    "frame_data_url": "https://lyft-extracted.s3.eu-west-3.amazonaws.com/train/a6afe4a83e2c29d41f7b31159449458bb5acc5fcc95feadaf19110de6b6eeacc/frame_ix_data.json"
+  }
+
+  //         {
+  //   "video_data": {
+  //     "max_frame_ind": 125
+  //   },
+  //   "frontal": "https://lyft-extracted.s3.eu-west-3.amazonaws.com/train/8246aafd339a991f4946d83b7fc9770e53b4f2cfdcf9f941b123a060ba56613b/frontal_ix.jpg",
+  //   "top-down": "https://lyft-extracted.s3.eu-west-3.amazonaws.com/train/8246aafd339a991f4946d83b7fc9770e53b4f2cfdcf9f941b123a060ba56613b/top_down_ix.png",
+  //   "frame_data_url": "https://lyft-extracted.s3.eu-west-3.amazonaws.com/train/8246aafd339a991f4946d83b7fc9770e53b4f2cfdcf9f941b123a060ba56613b/frame_ix_data.json"
+  // }
+
+  //         {
+  //   "video_data": {
+  //     "max_frame_ind": 125
+  //   },
+  //   "frontal": "https://lyft-extracted.s3.eu-west-3.amazonaws.com/train/bc89c85045e50514eb58ffa78661d191a743b7da84603385d2ed40c3327a969b/frontal_ix.jpg",
+  //   "top-down": "https://lyft-extracted.s3.eu-west-3.amazonaws.com/train/bc89c85045e50514eb58ffa78661d191a743b7da84603385d2ed40c3327a969b/top_down_ix.png",
+  //   "frame_data_url": "https://lyft-extracted.s3.eu-west-3.amazonaws.com/train/bc89c85045e50514eb58ffa78661d191a743b7da84603385d2ed40c3327a969b/frame_ix_data.json"
+  // }
+
+  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+  // If this is a HIT on AMT, then replace the default input with the real input.
+  var input = easyturk.getInput(DEFAULT_INPUT);
+
+  // Some variables to track state of the HIT.
+  var idx = 0;
+  var enabled = false;
+  var bb = null;
+
+  var play = false;
+  var frameIx = 0;
+
+  var createdAnnotationsOutputList = [];
+
+  function main() {
+    if (true || !easyturk.isPreview()) {
+      enable_hit();
+    }
+    // Set up empty description blobs.
+    input.objects = [];
+    for (var l = 0; l < input.num_objects; l++) {
+      input.objects.push({'name': '', 'rect': null});
+    }
+
+    // Load the images.
+    var imgUrl = input['frontal'].replace(`_ix`, `_${frameIx}`);
+    var img = new Image();
+    img.onload = function () {
+      output.image_width = img.width;
+    };
+    img.src = imgUrl;
+
+    $.ajaxSetup({
+      async: false
+    });
+    // Fetch the frame data
+    var dataUrl = input['frame_data_url'].replace(`_ix`, `_${frameIx}`);
+
+    $.getJSON(dataUrl, function (data) {
+      console.log(data);
+      input["frame_data"] = data
+    })
+
+    console.log(input)
+    $.ajaxSetup({
+      async: true
+    });
+
+    // Render the objects and the bounding box interaction.
+    set_scene();
+  }
+
+  // For transform to image and map
+  var egopose_translation;
+  var egopose_rotmat;
+  var cam_translation;
+  var cam_rotmat;
+  var cam_intrinsics;
+  var map_patch;
+  var canvasFrontal;
+  var frontalViewRatioW;
+  var frontalViewRatioH;
+  var referredObjectIx;
+  var endPointPathIx;
+
+  var selectedFrameToken;
+  var selectedFrameIx;
+  var frontalRationSet = false;
+
+  // Use the current index to update the image and description.
+  function render() {
+    // Set up the image
+    play = false;
+    $("#frontal-view").attr('src', input['frontal'].replace(`_ix`, `_${frameIx}`));
+    $("#video-slider").attr("max", input["video_data"]["max_frame_ind"] - 1)
+    $("#video-slider").val(frameIx);
+    $("#top-down-view-hidden").attr('src', input['top-down'].replace(`_ix`, `_${frameIx}`));
+    frontalRationSet = false;
+
+    // Top Down View
+    var image = new Image();
+    image.onload = function () {
+      drawImage(image);
+    }
+    image.src = input['top-down'].replace(`_ix`, `_${frameIx}`);
+
+    // Frontal Image
+    var imageFrontal = new Image();
+    imageFrontal.onload = function () {
+      canvasFrontal = document.getElementById('frontal-view-canvas');
+      canvasFrontal.width = $("#frontal-view").width();
+      canvasFrontal.height = $("#frontal-view").height();
+      frontalViewRatioW = (canvasFrontal.width / $("#frontal-view")[0].naturalWidth);
+      frontalViewRatioH = (canvasFrontal.height / $("#frontal-view")[0].naturalHeight);
+      frontalRationSet = true;
+    }
+
+    imageFrontal.src = input['frontal'].replace(`_ix`, `_${frameIx}`);
+
+    loadFrameData()
+  }
+
+  hRatio = null;
+  vRatio = null;
+
+  function drawImage(image) {
+    canvasTopDown = document.getElementById('top-down-view');
+
+    canvasTopDown.width = $("#top-down-view-hidden").width();
+    canvasTopDown.height = $("#top-down-view-hidden").height();//image.height;
+
+    topDownCtx = canvasTopDown.getContext("2d");
+    $canvasTopDown = $("#top-down-view");
+    canvasTopDownOffset = $canvasTopDown.offset();
+    canvasTopDownOffsetX = canvasTopDownOffset.left;
+    canvasTopDownOffsetY = canvasTopDownOffset.top;
+    scrollX = $canvasTopDown.scrollLeft();
+    scrollY = $canvasTopDown.scrollTop();
+
+    canvasTopDownW = canvasTopDown.width;
+    canvasTopDownH = canvasTopDown.height;
+    canvasTopDownCw = canvasTopDownW / 2;  // center
+    canvasTopDownCh = canvasTopDownH / 2;
+  }
+
+  function loadFrameData() {
+    // Update data
+    frame_token = input["frame_data"]["sample_token"]
+    egopose_translation = math.matrix([input["frame_data"]["ego_translation"]])
+    egopose_rotmat = math.matrix(input["frame_data"]["ego_rotation"])
+    cam_translation = math.matrix([input["frame_data"]["cam_translation"]])
+    cam_rotmat = math.matrix(input["frame_data"]["cam_rotation"]);
+    cam_intrinsics = math.matrix(input["frame_data"]["cam_intrinsic"]);
+    map_patch = math.matrix(input["frame_data"]["map_patch"]);
+    subsequent_egocenters = input["frame_data"]["subsequent_egocenters"]
+
+    // Render new data.
+    // Get new points
+    first_run = true;
+    canvasTopDown = undefined;
+    path_points = createPath();
+    path_points_elevations = [];
+
+    object_points = createObjectPoints();
+    lines = createLines();
+  }
+
+  function refreshAnnos() {
+    referredObjectIx = [];
+    endPointPathIx = null;
+    selectedFrameToken = "";
+    selectedFrameIx = -1;
+  }
+
+  $(document).on('change', "#video-slider", function (e) {
+    var currIx = $(this).val()
+    frameIx = currIx
+    $("#frontal-view").attr('src', input['frontal'].replace(`_ix`, `_${currIx}`));
+    $("#top-down-view-hidden").attr('src', input['top-down'].replace(`_ix`, `_${currIx}`));
+    var image = new Image();
+    image.onload = function () {
+      drawImage(image);
+    }
+    image.src = input['top-down'].replace(`_ix`, `_${currIx}`);
+
+    var dataUrl = input['frame_data_url'].replace(`_ix`, `_${currIx}`);
+    $.getJSON(dataUrl, function (data) {
+      input["frame_data"] = data
+    })
+    loadFrameData();
+    refreshAnnos();
+  })
+
+  $(document).on('click', ".play-button", function (e) {
+    if (play) {
+      $(this).text("Play");
+      play = false
+    } else {
+      $(this).text("Stop");
+      play = true
+      playVideo();
+    }
+  })
+
+  $('#store-frame-btn').click(function () {
+    storeFrameData()
+    selectedCommand = null;
+    $("#store-frame-btn").text("Store Frame Data")
+    $("#end-edit-btn").attr("disabled", true);
+
+    referredObjectIx = [];
+    endPointPathIx = null;
+    selectedFrameToken = "";
+    selectedFrameIx = -1;
+    document.getElementById("commandBox").value = "";
+    document.getElementById("actionLeft").checked = false;
+    document.getElementById("actionRight").checked = false;
+    document.getElementById("actionChangeLaneLeft").checked = false;
+    document.getElementById("actionChangeLaneRight").checked = false;
+    document.getElementById("actionULeft").checked = false;
+    document.getElementById("actionURight").checked = false;
+    document.getElementById("actionPark").checked = false;
+    document.getElementById("actionStop").checked = false;
+    document.getElementById("actionFollow").checked = false;
+    document.getElementById("actionOther").checked = false;
+    document.getElementById("actionOtherText").value = "";
+    document.getElementById("legalityLegal").checked = false;
+    document.getElementById("legalityIllegal").checked = false;
+    updateCommandTable()
+
+  });
+
+
+  function playVideo() {
+    var currImg = Number($("#video-slider").val());
+    var maxImg = input["video_data"]['max_frame_ind'];
+
+    function changeImgs() {
+      if (currImg < maxImg) {
+        $("#video-slider").val(currImg);
+        $("#video-slider").trigger("change");
+        currImg += 1;
+        if (play) {
+          setTimeout(changeImgs, 200);
+        }
+      } else {
+        $(".play-button").click();
+      }
+    }
+
+    setTimeout(changeImgs, 200);
+  }
+
+  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+  var canvasTopDownOffsetX;
+  var canvasTopDownOffsetY;
+
+  var canvasTopDown;
+  var topDownCtx;
+
+  const Point2 = (x, y) => ({x, y});  // creates a point
+  const Line = (p1, p2) => ({p1, p2});
+  const setStyle = (style) => eachOf(Object.keys(style), key => {
+    topDownCtx[key] = style[key]
+  });
+  const eachOf = (array, callback) => {
+    var i = 0;
+    while (i < array.length && callback(array[i], i++) !== true) ;
+  };
+
+  const list = {
+    items: null,
+    length() {
+      return this.items.length
+    },
+    add(item) {
+      this.items.push(item);
+      return item
+    },
+    eachItem(callback) {
+      var i = 0;
+      while (i < this.items.length) {
+        callback(this.items[i], i++);
+      }
+    }
+  }
+
+  function __drawLine(start, end, color = "rgba(205,50,50,1)") {
+    var canvasFrontal = document.getElementById('frontal-view-canvas')
+    var context = canvasFrontal.getContext('2d');
+    context.lineWidth = 2;
+    context.strokeStyle = color;
+    context.beginPath();
+    context.moveTo(start[0] / $("#frontal-view")[0].naturalWidth * canvasFrontal.width, (start[1] / $("#frontal-view")[0].naturalHeight) * canvasFrontal.height);
+    context.lineTo(end[0] / $("#frontal-view")[0].naturalWidth * canvasFrontal.width, (end[1] / $("#frontal-view")[0].naturalHeight) * canvasFrontal.height);
+    context.stroke();
+  }
+
+  function __drawRect(selectedCorners, color = "rgba(205,50,50,1)") {
+    var prev = selectedCorners[selectedCorners.length - 1];
+    for (var i = 0; i < selectedCorners.length; i++) {
+      var corner = selectedCorners[i];
+      this.__drawLine([parseInt(prev[0]), parseInt(prev[1])],
+              [parseInt(corner[0]), parseInt(corner[1])],
+              color);
+      prev = corner;
+    }
+  }
+
+  function drawBox(box_points, color = "rgba(205,50,50,1)") {
+    // Draw the sides;
+    box_points = box_points[0].map((_, colIndex) => box_points.map(row => row[colIndex]));
+    for (var i = 0; i < 4; i++) {
+      __drawLine([parseInt(box_points[i][0]), parseInt(box_points[i][1])],
+              [parseInt(box_points[i + 4][0]), parseInt(box_points[i + 4][1])],
+              color);
+    }
+    __drawRect(box_points.slice(0, 4), color);
+    __drawRect(box_points.slice(4, 8), color);
+  }
+
+  function drawObjectsFrontal(special_index = -1) {
+    var objectsToDraw = input["frame_data"]["image_objects_bbox"];
+
+    for (var i = 0; i < objectsToDraw.length; i++) {
+      if (referredObjectIx.includes(i)) {
+        color = "rgba(255,226,0,1)";
+      } else if (i == special_index) {
+        color = "rgba(205,50,50,1)";
+      } else {
+        // Set opacity to 0 to make it transparent
+        color = "rgba(47,79,79,0)";
+      }
+
+      var box = math.transpose(math.matrix(objectsToDraw[i]))._data; // 2 x 8 matrix , first row is x, second is y
+      drawBox(box, color);
+    }
+  }
+
+  function drawObjectsTopDown(special_index = -1) {
+    var objectsToDraw = math.matrix(input["frame_data"]["map_objects_bbox"]);
+
+    if (objectsToDraw.size()[0]) {
+
+      // Step 1: Convert points to canvas coords
+
+      var map_patch_corner_x = map_patch.subset(math.index(0))
+      var map_patch_corner_y = map_patch.subset(math.index(1))
+      var map_patch_width = map_patch.subset(math.index(2)) - map_patch.subset(math.index(0))
+      var map_patch_height = map_patch.subset(math.index(3)) - map_patch.subset(math.index(1))
+
+      var canvasTopDown_width = canvasTopDown.width;
+      var canvasTopDown_height = canvasTopDown.height;
+
+      var x = objectsToDraw.subset(math.index(math.range(0, objectsToDraw.size()[0]), math.range(0, objectsToDraw.size()[1]), 0));
+      var y = objectsToDraw.subset(math.index(math.range(0, objectsToDraw.size()[0]), math.range(0, objectsToDraw.size()[1]), 1));
+      var converted_x = math.multiply(math.divide(math.subtract(x, map_patch_corner_x), (map_patch_width)), canvasTopDown_width);
+      var converted_y = math.multiply(math.subtract(1, math.divide(math.subtract(y, map_patch_corner_y), (map_patch_height))), canvasTopDown_height);
+      var convertedPoints = math.concat(converted_x, converted_y, 2);
+
+      // Step 2: Draw points on canvas
+
+      var context = canvasTopDown.getContext('2d');
+      context.lineWidth = 3;
+
+      if (convertedPoints.size()[1] == 4) {
+        convertedPoints = math.concat(
+                convertedPoints,
+                convertedPoints.subset(
+                        math.index(
+                                math.range(0, convertedPoints.size()[0]),
+                                0,
+                                math.range(0, convertedPoints.size()[2]))
+                ),
+                1
+        )
+      }
+
+      for (var i = 0; i < convertedPoints.size()[0]; i++) {
+        if (referredObjectIx.includes(i)) {
+          context.strokeStyle = "rgba(255,226,0,1)";
+        } else if (i == special_index) {
+          context.strokeStyle = "rgba(205,50,50,1)";
+        } else {
+          context.strokeStyle = "rgba(47,79,79,1)";
+        }
+        context.beginPath();
+        // If not closed, close it
+        for (var j = 0; j < convertedPoints.size()[1] - 1; j++) {
+          context.moveTo(
+                  math.subset(convertedPoints, math.index(i, j, 0)),
+                  math.subset(convertedPoints, math.index(i, j, 1))
+          );
+          context.lineTo(
+                  math.subset(convertedPoints, math.index(i, j + 1, 0)),
+                  math.subset(convertedPoints, math.index(i, j + 1, 1))
+          )
+        }
+        context.stroke();
+      }
+    }
+  }
+
+
+  function drawCarStartPoint() {
+    var ego_box = math.matrix(input["frame_data"]["egobbox"]);
+
+    // Step 1: Convert points to canvas coords
+    var map_patch_corner_x = map_patch.subset(math.index(0))
+    var map_patch_corner_y = map_patch.subset(math.index(1))
+    var map_patch_width = map_patch.subset(math.index(2)) - map_patch.subset(math.index(0))
+    var map_patch_height = map_patch.subset(math.index(3)) - map_patch.subset(math.index(1))
+
+    var canvasTopDown_width = canvasTopDown.width;
+    var canvasTopDown_height = canvasTopDown.height;
+
+    var ego_x = ego_box.subset(math.index(math.range(0, ego_box.size()[0]), 0));
+    var ego_y = ego_box.subset(math.index(math.range(0, ego_box.size()[0]), 1));
+    var ego_converted_x = math.multiply(math.divide(math.subtract(ego_x, map_patch_corner_x), (map_patch_width)), canvasTopDown_width);
+    var ego_converted_y = math.multiply(math.subtract(1, math.divide(math.subtract(ego_y, map_patch_corner_y), (map_patch_height))), canvasTopDown_height);
+    var rel_x_points = math.subtract(ego_converted_x, math.mean(ego_converted_x));
+    var rel_y_points = math.subtract(ego_converted_y, math.mean(ego_converted_y));
+    var ego_convertedPoints = math.concat(ego_converted_x, ego_converted_y, 1);
+
+
+    // Step 2: Draw points on canvas
+    var context = canvasTopDown.getContext('2d');
+    context.lineWidth = 3;
+
+    context.strokeStyle = "rgba(0,255,215,1)";
+    context.beginPath();
+    if (ego_convertedPoints.size()[0] == 4) {
+      ego_convertedPoints = math.concat(
+              ego_convertedPoints,
+              ego_convertedPoints.subset(
+                      math.index(
+                              0,
+                              math.range(0, ego_convertedPoints.size()[1]))
+              ),
+              0
+      )
+    }
+    for (var i = 0; i < ego_convertedPoints.size()[0] - 1; i++) {
+      context.moveTo(
+              math.subset(ego_convertedPoints, math.index(i, 0)),
+              math.subset(ego_convertedPoints, math.index(i, 1))
+      );
+      context.lineTo(
+              math.subset(ego_convertedPoints, math.index(i + 1, 0)),
+              math.subset(ego_convertedPoints, math.index(i + 1, 1))
+      )
+    }
+    center = [
+      math.mean(math.subset(ego_convertedPoints, math.index(math.range(0, 4), 0))),
+      math.mean(math.subset(ego_convertedPoints, math.index(math.range(0, 4), 1)))
+    ]
+    context.moveTo(
+            center[0],
+            center[1],
+    )
+    context.lineTo(
+            math.subset(ego_convertedPoints, math.index(0, 0)) / 2 + math.subset(ego_convertedPoints, math.index(1, 0)) / 2,
+            math.subset(ego_convertedPoints, math.index(0, 1)) / 2 + math.subset(ego_convertedPoints, math.index(1, 1)) / 2
+    )
+    context.stroke();
+  }
+
+  function getSidePoints(point1, point2, thickness, farside = true) {
+
+    if (point2[0] - point1[0] == 0) {
+      angle = math.PI / 2;
+    } else {
+      angle = math.atan2(point2[1] - point1[1], point2[0] - point1[0])
+    }
+    if (farside) {
+      target_point = point2
+    } else {
+      target_point = point1
+    }
+    p_right = math.sin(angle) * thickness + target_point[0]
+    q_right = -math.cos(angle) * thickness + target_point[1]
+    p_left = -math.sin(angle) * thickness + target_point[0]
+    q_left = math.cos(angle) * thickness + target_point[1]
+
+    return [[p_left, q_left], [p_right, q_right]]
+  }
+
+  function computePolygonSides(path_points, thickness) {
+
+    polygon_sides_left = []
+    polygon_sides_right = []
+
+    for (i = 1; i < path_points.length; i++) {
+      if (i < path_points.length - 1) {
+        side_points = getSidePoints(path_points[i - 1], path_points[i], thickness, false)
+        polygon_sides_left.push(side_points[0])
+        polygon_sides_right.push(side_points[1])
+      } else {
+        side_points = getSidePoints(path_points[i - 1], path_points[i], thickness, false)
+        polygon_sides_left.push(side_points[0])
+        polygon_sides_right.push(side_points[1])
+        side_points = getSidePoints(path_points[i - 1], path_points[i], thickness, true)
+        polygon_sides_left.push(side_points[0])
+        polygon_sides_right.push(side_points[1])
+      }
+    }
+    polygon_sides_right.reverse()
+    return polygon_sides_left.concat(polygon_sides_right)
+  }
+
+  function most_frequent(arr) {
+    var o = {}, maxCount = 0, maxValue, m;
+    for (var i = 0, iLen = arr.length; i < iLen; i++) {
+      m = arr[i];
+
+      if (!o.hasOwnProperty(m)) {
+        o[m] = 0;
+      }
+      ++o[m];
+
+      if (o[m] > maxCount) {
+        maxCount = o[m];
+        maxValue = m;
+      }
+    }
+    return maxValue;
+  }
+
+  function projectPathToFrontalView() {
+    // 1) Add 0 to third dimension
+    if (path_points.items.length < 2) {
+      return;
+    }
+
+    // 1) Create polygons in 2D and append z-axis
+    // Scale path points to map coordinates
+    var points_map = math.matrix(path_points.projectPointsToMap(true));
+
+    // Convert path points to polygon side points
+    points_map = math.matrix(computePolygonSides(points_map._data, 1))
+
+    // Scale object points to map coordinates
+    path_polygon_left = [...path_points_elevations]
+    path_polygon_right = [...path_points_elevations].reverse();
+    points_map_elevations = math.matrix(path_polygon_left.concat(path_polygon_right))
+
+    points_map_elevations = points_map_elevations.resize([points_map_elevations.size()[0], 1])
+    // // Append nearest object points
+    points_map = math.concat(points_map, points_map_elevations, 1)
+
+    // 2) Subtract egopose translation
+    for (var i = 0; i < points_map.size()[0]; i++) {
+      new_point = math.subtract(math.subset(points_map, math.index(i, math.range(0, points_map.size()[1]))), egopose_translation)
+      points_map.subset(math.index(i, math.range(0, points_map.size()[1])), new_point)
+    }
+    points_map = math.transpose(points_map)
+
+    // 3) Rotate by egopose rotation matrix
+    points_map = math.multiply(math.transpose(egopose_rotmat), points_map)
+    points_map = math.transpose(points_map)
+
+    // 4) Subtract camera translation
+    for (var i = 0; i < points_map.size()[0]; i++) {
+      new_point = math.subtract(math.subset(points_map, math.index(i, math.range(0, points_map.size()[1]))), cam_translation)
+      points_map.subset(math.index(i, math.range(0, points_map.size()[1])), new_point)
+    }
+    points_map = math.transpose(points_map)
+
+    // 5) Rotate by camera rotation matrix
+    points_map = math.multiply(math.transpose(cam_rotmat), points_map)
+    points_map = math.transpose(points_map)
+
+    // 6) Map to image view
+    var viewpad = math.matrix(cam_intrinsics)
+    viewpad = math.concat(viewpad, math.zeros(viewpad.size()[0], 1), 1)
+    viewpad = math.concat(viewpad, math.zeros(1, viewpad.size()[1]), 0)
+    viewpad.subset(math.index(3, 3), 1)
+    points_frontal = math.transpose(points_map)
+    points_frontal = math.concat(points_frontal, math.ones(1, points_frontal.size()[1]), 0)
+    points_frontal = math.multiply(viewpad, points_frontal)
+    points_frontal = math.subset(points_frontal, math.index(math.range(0, 3), math.range(0, points_frontal.size()[1])))
+    norm = math.subset(points_frontal, math.index(2, math.range(0, points_frontal.size()[1])))
+    norm = math.concat(norm, norm, norm, 0)
+    points_frontal = math.dotDivide(points_frontal, norm)
+    points_frontal = math.subset(points_frontal, math.index(math.range(0, 2), math.range(0, points_frontal.size()[1])))
+    points_frontal = math.transpose(points_frontal)
+
+    points_frontal_x = math.multiply(math.subset(points_frontal, math.index(math.range(0, points_frontal.size()[0]), 0)), frontalViewRatioW);
+    points_frontal_y = math.multiply(math.subset(points_frontal, math.index(math.range(0, points_frontal.size()[0]), 1)), frontalViewRatioH);
+
+    points_frontal = math.concat(points_frontal_x, points_frontal_y, 1);
+
+    return points_frontal;
+  }
+
+  function projectElevatedPathToFrontalView() {
+    // 1) Add 0 to third dimension
+    if (path_points.items.length < 2) {
+      return;
+    }
+
+    // 1) Create polygons in 2D and append z-axis
+    // Scale path points to map coordinates
+    var points_map = math.matrix(path_points.projectPointsToMap(true));
+
+    // Convert path points to polygon side points
+    points_map = math.matrix(computePolygonSides(points_map._data, 1))
+
+    // Scale object points to map coordinates
+    if (object_points.items.length > 0) {
+      var object_points_map = math.matrix(object_points.projectPointsToMap(false))
+
+      // Find nearest objects to each path x-y point
+      nearest_z = math.matrix([])
+      for (var i = 0; i < points_map.size()[0]; i++) {
+        var min_distance = 1e10;
+        path_point = math.subset(points_map, math.index(i, math.range(0, points_map.size()[1])))
+        closest_point_elevation = 0.0
+        for (var j = 0; j < object_points_map.size()[0]; j++) {
+          object_point = math.subset(object_points_map, math.index(j, math.range(0, object_points_map.size()[1])))
+          distance = math.sqrt((path_point._data[0][0] - object_point._data[0][0]) ** 2 + (path_point._data[0][1] - object_point._data[0][1]) ** 2);
+
+          if (distance < min_distance) {
+            min_distance = distance
+            closest_point_elevation = object_elevations[j]
+          }
+        }
+        //console.log(nearest_z)
+        //console.log(closest_point_elevation)
+        nearest_z = math.concat(nearest_z, [closest_point_elevation], 0)
+      }
+      nearest_z = nearest_z.resize([nearest_z.size()[0], 1])
+    } else {
+      nearest_z = math.zeros(points_map.size()[0], 1)
+    }
+    // // Append nearest object points
+    points_map = math.concat(points_map, nearest_z, 1)
+
+    // 2) Subtract egopose translation
+    for (var i = 0; i < points_map.size()[0]; i++) {
+      new_point = math.subtract(math.subset(points_map, math.index(i, math.range(0, points_map.size()[1]))), egopose_translation)
+      points_map.subset(math.index(i, math.range(0, points_map.size()[1])), new_point)
+    }
+    points_map = math.transpose(points_map)
+
+    // 3) Rotate by egopose rotation matrix
+    points_map = math.multiply(math.transpose(egopose_rotmat), points_map)
+    points_map = math.transpose(points_map)
+
+    // 4) Subtract camera translation
+    for (var i = 0; i < points_map.size()[0]; i++) {
+      new_point = math.subtract(math.subset(points_map, math.index(i, math.range(0, points_map.size()[1]))), cam_translation)
+      points_map.subset(math.index(i, math.range(0, points_map.size()[1])), new_point)
+    }
+    points_map = math.transpose(points_map)
+
+    // 5) Rotate by camera rotation matrix
+    points_map = math.multiply(math.transpose(cam_rotmat), points_map)
+    points_map = math.transpose(points_map)
+
+    // 6) Map to image view
+    var viewpad = math.matrix(cam_intrinsics)
+    viewpad = math.concat(viewpad, math.zeros(viewpad.size()[0], 1), 1)
+    viewpad = math.concat(viewpad, math.zeros(1, viewpad.size()[1]), 0)
+    viewpad.subset(math.index(3, 3), 1)
+    points_frontal = math.transpose(points_map)
+    points_frontal = math.concat(points_frontal, math.ones(1, points_frontal.size()[1]), 0)
+    points_frontal = math.multiply(viewpad, points_frontal)
+    points_frontal = math.subset(points_frontal, math.index(math.range(0, 3), math.range(0, points_frontal.size()[1])))
+    norm = math.subset(points_frontal, math.index(2, math.range(0, points_frontal.size()[1])))
+    norm = math.concat(norm, norm, norm, 0)
+    points_frontal = math.dotDivide(points_frontal, norm)
+    points_frontal = math.subset(points_frontal, math.index(math.range(0, 2), math.range(0, points_frontal.size()[1])))
+    points_frontal = math.transpose(points_frontal)
+    // Finally transform to the canvas
+    points_frontal_x = math.multiply(math.subset(points_frontal, math.index(math.range(0, points_frontal.size()[0]), 0)), frontalViewRatioW);
+    points_frontal_y = math.multiply(math.subset(points_frontal, math.index(math.range(0, points_frontal.size()[0]), 1)), frontalViewRatioH);
+
+    points_frontal = math.concat(points_frontal_x, points_frontal_y, 1);
+
+    return points_frontal;
+  }
+
+  function drawPathOnFrontalView() {
+    if (path_points.items.length < 2) {
+      context = canvasFrontal.getContext('2d');
+      context.clearRect(0, 0, canvasFrontal.width, canvasFrontal.height);
+    }
+    // var projectedPoints = projectPathToFrontalView();
+    var projectedPoints = projectElevatedPathToFrontalView();
+    if (projectedPoints === undefined) return
+    var context = canvasFrontal.getContext('2d');
+    context.strokeStyle = "rgba(50,205,50,0.75)";
+    context.clearRect(0, 0, canvasFrontal.width, canvasFrontal.height);
+
+
+    for (var i = 0; i < projectedPoints.size()[0] - 1; i++) {
+      if(i == closestPointIx || i == (projectedPoints.size()[0]-2) - (closestPointIx)){
+            context.strokeStyle = "rgb(241,21,21)";
+      }else{
+            context.strokeStyle = "rgba(50,205,50,0.75)";
+      }
+      context.beginPath();
+      context.moveTo(
+              math.subset(projectedPoints, math.index(i, 0)),
+              math.subset(projectedPoints, math.index(i, 1))
+      );
+      context.lineTo(
+              math.subset(projectedPoints, math.index(i + 1, 0)),
+              math.subset(projectedPoints, math.index(i + 1, 1))
+      );
+      context.stroke();
+    }
+  }
+
+
+  function projectPointsToMap(isPath) {
+    var points_map = [];
+
+    // points are (a,b)
+    // we need to transform them to global view
+    this.eachItem(point => {
+      if(isPath == false){
+        points_map.push([point.x, point.y]);
+      }else if(point.x <= canvasTopDown.width && point.y <= canvasTopDown.height){
+        points_map.push([point.x, point.y]);
+      }
+    });
+
+    var points_map = math.matrix(points_map)
+    var canvasTopDown_size = math.matrix([canvasTopDown.width, canvasTopDown.height]) // Width, Height
+
+    var map_patch_corner_x = map_patch.subset(math.index(0))
+    var map_patch_corner_y = map_patch.subset(math.index(1))
+    var map_patch_width = map_patch.subset(math.index(2)) - map_patch.subset(math.index(0))
+    var map_patch_height = map_patch.subset(math.index(3)) - map_patch.subset(math.index(1))
+
+    var canvasTopDown_width = canvasTopDown_size.subset(math.index(0))
+    var canvasTopDown_height = canvasTopDown_size.subset(math.index(1))
+
+    var x = points_map.subset(math.index(math.range(0, points_map.size()[0]), 0))
+    var y = points_map.subset(math.index(math.range(0, points_map.size()[0]), 1))
+
+    var x_trans = math.add(math.divide(math.multiply(x, map_patch_width), canvasTopDown_width), map_patch_corner_x)
+    var y_trans = math.add(math.divide(math.multiply(math.subtract(canvasTopDown_height, y), map_patch_height), canvasTopDown_height), map_patch_corner_y)
+
+    if (points_map.size()[0] == 1) {
+      x_trans = math.matrix([[x_trans]]);
+      y_trans = math.matrix([[y_trans]]);
+    }
+    var points_map = math.concat(x_trans, y_trans, 1)
+    return points_map
+  }
+
+  function projectPathToTopDownView(car_end_point_pos) {
+    if (path_points.items.length < 2) {
+      return;
+    }
+    var points_top_down = []
+    path_points.eachItem(point => {
+      points_top_down.push([point.x, point.y]);
+    });
+
+    if (car_end_point_pos) {
+      points_top_down.push([car_end_point_pos.x, car_end_point_pos.y])
+    }
+
+    points_top_down = math.matrix(points_top_down);
+    points_top_down = math.matrix(computePolygonSides(points_top_down._data, 5))
+
+    return points_top_down;
+  }
+
+  function drawPathOnTopDownView() {
+    if (path_points.items.length < 2) {
+      return;
+    }
+    var projectedPoints = projectPathToTopDownView();
+    var context = canvasTopDown.getContext('2d');
+    context.strokeStyle = "rgba(50,205,50,0.75)";
+    context.clearRect(0, 0, canvasTopDown.width, canvasTopDown.height);
+
+    for (var i = 0; i < projectedPoints.size()[0] - 1; i++) {
+      context.beginPath();
+      context.moveTo(
+              math.subset(projectedPoints, math.index(i, 0)),
+              math.subset(projectedPoints, math.index(i, 1))
+      );
+      context.lineTo(
+              math.subset(projectedPoints, math.index(i + 1, 0)),
+              math.subset(projectedPoints, math.index(i + 1, 1))
+      );
+      context.stroke();
+    }
+
+  }
+
+  function getMapToCanvas(map_point, map_patch) {
+    var map_patch_corner_x = map_patch.subset(math.index(0))
+    var map_patch_corner_y = map_patch.subset(math.index(1))
+    var map_patch_width = map_patch.subset(math.index(2)) - map_patch.subset(math.index(0))
+    var map_patch_height = map_patch.subset(math.index(3)) - map_patch.subset(math.index(1))
+
+    var canvasTopDown_width = canvasTopDown.width;
+    var canvasTopDown_height = canvasTopDown.height;
+
+    canvas_point_x = math.multiply(math.divide(math.subtract(map_point[0], map_patch_corner_x), (map_patch_width)), canvasTopDown_width);
+    canvas_point_y = math.multiply(math.subtract(1, math.divide(math.subtract(map_point[1], map_patch_corner_y), (map_patch_height))), canvasTopDown_height);
+    return [canvas_point_x, canvas_point_y]
+  }
+
+  function getCanvasToMap(canvas_point, map_patch) {
+    var map_patch_corner_x = map_patch.subset(math.index(0))
+    var map_patch_corner_y = map_patch.subset(math.index(1))
+    var map_patch_width = map_patch.subset(math.index(2)) - map_patch.subset(math.index(0))
+    var map_patch_height = map_patch.subset(math.index(3)) - map_patch.subset(math.index(1))
+
+    var canvasTopDown_width = canvasTopDown.width;
+    var canvasTopDown_height = canvasTopDown.height;
+
+    map_point_x = math.add(math.divide(math.multiply(canvas_point[0], map_patch_width), canvasTopDown_width), map_patch_corner_x)
+    map_point_y = math.add(math.divide(math.multiply(math.subtract(canvasTopDown_height, canvas_point[1]), map_patch_height), canvasTopDown_height), map_patch_corner_y)
+    return [map_point_x, map_point_y]
+  }
+
+  function getPointInFront(center_point, rot_matrix, distance) {
+    // Facing angle in radians
+    facing_angle = math.atan2(
+            math.subset(rot_matrix, math.index(0, 0)),
+            math.subset(rot_matrix, math.index(0, 1))
+    )
+
+    x_front = math.sin(facing_angle) * distance + center_point[0]
+    y_front = -math.cos(facing_angle) * distance + center_point[1]
+
+    front_point = [x_front, y_front]
+    return front_point
+  }
+
+  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+  function createList(extend) {
+    return Object.assign({}, list, {items: []}, extend);
+  }
+
+  function getClosest(from, minDist) {
+    var closestPoint;
+    this.eachItem(point => {
+      const dist = Math.hypot(from.x - point.x, from.y - point.y);
+      if (dist < minDist) {
+        closestPoint = point;
+        minDist = dist;
+      }
+    });
+    return closestPoint;
+  }
+
+  function getClosestIx(from, minDist) {
+    var closestPoint;
+    var ix = 0;
+    var closestIx = -1;
+    this.eachItem(point => {
+      const dist = Math.hypot(from.x - point.x, from.y - point.y);
+      if (dist < minDist) {
+        closestPoint = point;
+        minDist = dist;
+        closestIx = ix;
+      }
+      ix++;
+    });
+    return closestIx;
+  }
+
+  function distanceLineFromPoint(line, point) {
+    const lx = path_points.items[line.p1].x;
+    const ly = path_points.items[line.p1].y;
+    const v1x = path_points.items[line.p2].x - lx;
+    const v1y = path_points.items[line.p2].y - ly;
+    const v2x = point.x - lx;
+    const v2y = point.y - ly;
+    // get unit dist of closest point
+    const u = (v2x * v1x + v2y * v1y) / (v1y * v1y + v1x * v1x);
+    if (u >= 0 && u <= 1) {  // is the point on the line
+      return Math.hypot(lx + v1x * u - point.x, ly + v1y * u - point.y);
+    } else if (u < 0) {  // point is before start
+      return Math.hypot(lx - point.x, ly - point.y);
+    }
+    // point is after end of line
+    return Math.hypot(path_points.items[line.p2].x - point.x, path_points.items[line.p2].y - point.y);
+  }
+
+  // this will extend the lines list
+  function getClosestline(from, minDist) {
+    var closestLine;
+    this.eachItem(line => {
+      const dist = distanceLineFromPoint(line, from);
+      if (dist < minDist) {
+        closestLine = line;
+        minDist = dist;
+      }
+    });
+    return closestLine;
+  }
+
+  function drawPoint(point) {
+    topDownCtx.moveTo(point.x, point.y);
+    topDownCtx.rect(point.x - 2, point.y - 2, 4, 4);
+  }
+
+  function drawLine(line) {
+    topDownCtx.moveTo(path_points.items[line.p1].x, path_points.items[line.p1].y);
+    topDownCtx.lineTo(path_points.items[line.p2].x, path_points.items[line.p2].y);
+  }
+
+  function drawLines() {
+    this.eachItem(line => drawLine(line))
+  }
+
+  function drawPoints() {
+    this.eachItem(point => drawPoint(point))
+  }
+
+  var object_elevations;
+
+  var object_points;
+
+  function createObjectPoints() {
+    return createList({
+      getClosest: getClosest,
+      getClosestIx: getClosestIx,
+      projectPointsToMap: projectPointsToMap,
+    });
+  }
+
+  var path_points;
+
+  function createPath() {
+    return createList({
+      draw: drawPoints,
+      getClosest: getClosest,
+      getClosestIx: getClosestIx,
+      projectPointsToMap: projectPointsToMap,
+      projectPathToTopDownView: projectPathToTopDownView,
+      drawPathOnFrontalView: drawPathOnFrontalView,
+      drawPathOnTopDownView: drawPathOnTopDownView
+    });
+  }
+
+  var path_points_elevations;
+
+  var lines;
+
+  function createLines() {
+    return createList({
+      getClosest: getClosestline,
+      draw: drawLines,
+    });
+  }
+
+  const mouse = {
+    x: 0,
+    y: 0,
+    button: false,
+    drag: false,
+    dragStart: false,
+    dragEnd: false,
+    dragStartX: 0,
+    dragStartY: 0
+  }
+
+  function mouseEvents(e) {
+    if (play) {
+      return;
+    }
+
+    mouse.x = e.pageX - canvasTopDownOffsetX;
+    mouse.y = e.pageY - canvasTopDownOffsetY;
+    const lb = mouse.button;
+    mouse.button = e.type === "mousedown" ? true : e.type === "mouseup" ? false : mouse.button;
+    if (lb !== mouse.button) {
+      if (mouse.button) {
+        mouse.drag = true;
+        mouse.dragStart = true;
+        mouse.dragStartX = mouse.x;
+        mouse.dragStartY = mouse.y;
+      } else {
+        mouse.drag = false;
+        mouse.dragEnd = true;
+      }
+    }
+  }
+
+  $(document).keypress(function (event) {
+    if (play) {
+      return
+    }
+    ;
+    var keycode = (event.keyCode ? event.keyCode : event.which);
+    if (keycode = '115') {
+      if (closestPointIx > -1) {
+
+        endPointPathIx = closestPointIx;
+        selectedFrameIx = frameIx;
+        selectedFrameToken = input["frame_data"]["scene_token"]
+
+        // if (referredObjectIx.includes(closestObjectIx)) {
+        //   referredObjectIx = referredObjectIx.filter(function (value, index, arr) {
+        //     return value != closestObjectIx;
+        //   });
+        // } else {
+        //   referredObjectIx.push(closestObjectIx);
+        //   selectedFrameIx = frameIx;
+        //   selectedFrameToken = input["frame_data"]["scene_token"]
+        // }
+      }
+      if (endPointPathIx === null) {
+        selectedFrameIx = -1;
+        selectedFrameToken = "";
+      }
+    }
+  });
+
+  ["down", "up", "move"].forEach(name => document.getElementById('top-down-view').addEventListener("mouse" + name, mouseEvents));
+  // short cut vars
+  var canvasTopDownW;
+  var canvasTopDownH;
+  var canvasTopDownCw;
+  var canvasTopDownCh;
+  var globalTime;
+  var closestLine;
+  var closestPoint;
+  var pointDrag; // true is dragging a point else dragging a line
+  var dragOffsetX;
+  var dragOffsetY;
+  var cursor;
+  var toolTip;
+  var helpCount = 0;
+  const minDist = 12;
+  const minObjDist = 12;
+  const lineStyle = {
+    lineWidth: 2,
+    strokeStyle: "green",
+  }
+  const pointStyle = {
+    lineWidth: 1,
+    strokeStyle: "blue",
+  }
+  const highlightStyle = {
+    lineWidth: 3,
+    strokeStyle: "red",
+  }
+  const font = {
+    font: "18px arial",
+    fillStyle: "black",
+    textAlign: "center",
+  }
+
+
+  // main update function
+  function update(timer) {
+
+    if (document.getElementById("actionOther").checked) {
+      document.getElementById("actionOtherText").style.display = '';
+    } else {
+      document.getElementById("actionOtherText").style.display = 'none';
+    }
+
+    checkTasks()
+    enableSubmit()
+    enableStoreFrameData()
+
+    if (canvasTopDown === undefined) {
+      console.log("not initiliased yet!!");
+      requestAnimationFrame(update);
+      return;
+    }
+    if (frontalRationSet == false) {
+      console.log("ratio initiliased yet!!");
+      requestAnimationFrame(update);
+      return;
+    }
+
+    cursor = "crosshair";
+    globalTime = timer;
+    topDownCtx.setTransform(1, 0, 0, 1, 0, 0); // reset transform
+    topDownCtx.globalAlpha = 1;           // reset alpha
+    topDownCtx.clearRect(0, 0, canvasTopDownW, canvasTopDownH);
+    var canvasFrontal = document.getElementById('frontal-view-canvas')
+    var context = canvasFrontal.getContext('2d');
+    context.clearRect(0, 0, canvasFrontal.width, canvasFrontal.height);
+
+    if (first_run) {
+      frame_token = input["frame_data"]["sample_token"]
+      object_centers = input["frame_data"]["map_objects_center"]
+      object_elevations = input["frame_data"]["map_objects_elevation"]
+      map_patch = math.matrix(input["frame_data"]["map_patch"])
+      egopose = input["frame_data"]["ego_translation"]
+      subsequent_egocenters = input["frame_data"]["subsequent_egocenters"]
+      subsequent_egocenters_elevations = input["frame_data"]["subsequent_egocenters_elevations"]
+
+      for (i = 0; i < object_centers.length; i++) {
+        object_center = object_centers[i]
+        object_center = getMapToCanvas(object_center, map_patch)
+        object_points.add(Point2(object_center[0], object_center[1]))
+      }
+
+      car_anchor = getPointInFront(egopose, egopose_rotmat, 0)
+
+      //Filter all points that are too near
+      for (i = 0; i < subsequent_egocenters.length; i++) {
+        path_point = subsequent_egocenters[i]
+        path_point_elevation = subsequent_egocenters_elevations[i]
+        anchor_dist = Math.sqrt(
+                Math.pow((car_anchor[0] - path_point[0]), 2) +
+                Math.pow((car_anchor[1] - path_point[1]), 2)
+        );
+        if (anchor_dist > 2.0) {
+          path_point = getMapToCanvas(path_point, map_patch)
+          path_points.add(Point2(path_point[0], path_point[1]))
+          path_points_elevations.push(path_point_elevation)
+        }
+      }
+      first_run = false
+    }
+
+
+    if (mouse.drag === false) {
+      closestLine = undefined;
+      closestPoint = path_points.getClosest(mouse, minDist);
+      closestPointIx = path_points.getClosestIx(mouse, minDist);
+      closestObject = object_points.getClosest(mouse, minObjDist);
+      closestObjectIx = object_points.getClosestIx(mouse, minObjDist);
+    }
+
+    // Show point
+    setStyle(font);
+    showPointCanvas = Point2(mouse.x, mouse.y);
+    showPointMap = getCanvasToMap([showPointCanvas.x, showPointCanvas.y], map_patch)
+
+    if (path_points.length() > 1) {
+      path_points.drawPathOnFrontalView();
+      path_points.drawPathOnTopDownView();
+    }
+
+    drawObjectsFrontal(closestObjectIx);
+
+    setStyle(lineStyle);
+    topDownCtx.beginPath();
+    topDownCtx.stroke();
+    setStyle(pointStyle);
+    topDownCtx.beginPath();
+    path_points.draw();
+    topDownCtx.stroke();
+
+    drawCarStartPoint()
+    drawObjectsTopDown(closestObjectIx);
+
+    // draw highlighted point or line
+    setStyle(highlightStyle);
+    topDownCtx.beginPath();
+    if (closestPoint) {
+      drawPoint(closestPoint)
+    }
+    if (endPointPathIx !== null) {
+      drawPoint(path_points.items[endPointPathIx])
+    }
+
+    topDownCtx.stroke();
+
+    requestAnimationFrame(update);
+  }
+
+  $(document).ready(function () {
+    main();
+    requestAnimationFrame(update);
+  })
+  //////////////////// END OF CANVAS CODE
+
+
+  // Update the index, and save the text in the text area and render new data.
+  function set_scene() {
+    document.activeElement.blur();
+    // increment index.
+    frameIx = 0;
+    // Render new data.
+    // Get new points
+    first_run = true;
+    canvasTopDown = undefined;
+    path_points = createPath();
+    path_points_elevations = [];
+    referredObjectIx = [];
+    endPointPathIx = null;
+    selectedFrameToken = "";
+    selectedFrameIx = -1;
+    object_points = createObjectPoints();
+    lines = createLines();
+    document.getElementById("commandBox").value = "";
+    document.getElementById("actionLeft").checked = false;
+    document.getElementById("actionRight").checked = false;
+    document.getElementById("actionChangeLaneLeft").checked = false;
+    document.getElementById("actionChangeLaneRight").checked = false;
+    document.getElementById("actionULeft").checked = false;
+    document.getElementById("actionURight").checked = false;
+    document.getElementById("actionPark").checked = false;
+    document.getElementById("actionStop").checked = false;
+    document.getElementById("actionFollow").checked = false;
+    document.getElementById("actionOther").checked = false;
+    document.getElementById("actionOtherText").value = "";
+    document.getElementById("legalityLegal").checked = false;
+    document.getElementById("legalityIllegal").checked = false;
+
+    render();
+  }
+
+  function storeFrameData() {
+    var out = {
+      "scene_info": {
+        "frontal": input["frontal"],
+        "top-down": input["top-down"],
+        "frame_data_url": input["frame_data_url"],
+        "video_data": input["video_data"]
+      },
+      "scene_token": input["frame_data"]["scene_token"],
+      "delete": false,
+      "command": {
+        "commandText": document.getElementById("commandBox").value,
+        //"referredObjectIx": referredObjectIx,
+        "endPointPathIx": endPointPathIx,
+        "selectedFrameToken": selectedFrameToken,
+        "selectedFrameIx": Number(selectedFrameIx),
+      },
+      "actions": {
+        "actionLeft": document.getElementById("actionLeft").checked,
+        "actionRight": document.getElementById("actionRight").checked,
+        "actionChangeLaneLeft": document.getElementById("actionChangeLaneLeft").checked,
+        "actionChangeLaneRight": document.getElementById("actionChangeLaneRight").checked,
+        "actionULeft": document.getElementById("actionULeft").checked,
+        "actionURight": document.getElementById("actionURight").checked,
+        "actionPark": document.getElementById("actionPark").checked,
+        "actionStop": document.getElementById("actionStop").checked,
+        "actionFollow": document.getElementById("actionFollow").checked,
+        "actionOther": document.getElementById("actionOther").checked,
+        "actionOtherText": document.getElementById("actionOtherText").value,
+      },
+      "legality": {
+        "legalityLegal": document.getElementById("legalityLegal").checked,
+        "legalityIllegal": document.getElementById("legalityIllegal").checked,
+      }
+    }
+    if (selectedCommand !== null) {
+      createdAnnotationsOutputList[selectedCommand] = out;
+    } else {
+      createdAnnotationsOutputList.push(out);
+    }
+  }
+
+  function removeFrameData(index) {
+    createdAnnotationsOutputList.splice(index, 1);
+  }
+
+  function updateCommandTable() {
+    //var commandsTable = document.getElementById('commands-table');
+    //commandsTable.innerHTML = "";
+    $("#commands-table").empty();
+    for (var i = 0; i < createdAnnotationsOutputList.length; i++) {
+      createdAnnotationsOutput = createdAnnotationsOutputList[i];
+      //console.log(createdAnnotationsOutput)
+      if (createdAnnotationsOutput["delete"] == false) {
+
+        // <div className="card w-50">
+        //   <div className="card-body">
+        //     <h5 className="card-title">Card title</h5>
+        //     <p className="card-text">With supporting text below as a natural lead-in to additional content.</p>
+        //     <a href="#" className="btn btn-primary">Button</a>
+        //   </div>
+        // </div>
+        command_html = "<div class=\"card w-50\"><div class=\"card-body\"><h5 class=\"card-title\">" + "Command " + (i + 1) + " <button name=\"" + i + "\"><i class=\"edit-button fas fa-pen\"></i></button> <button name=\"" + i + "\"><i class=\"trash-button fas fa-trash\"></i></button></h5>"
+        command_html += "<p class=\"card-text\">" + createdAnnotationsOutput["command"]["commandText"] + "</p></div></div>"
+        // commandLine = document.createElement("p");
+        // var tr = "<tr>";
+        // tr += "<td> Command " + (i + 1) + ": "+ createdAnnotationsOutput["command"]["commandText"] //" @ Frame " + (createdAnnotationsOutput["command"]["selectedFrameIx"])
+        //  + "</td>";
+        // //tr += "<td><span style=\"color: blue\"> Load Back </span></td>";
+        // tr += "<td><button name=\""+ i +"\"><i class=\"edit-button fas fa-pen\"></i></button> <button name=\""+ i +"\"><i class=\"trash-button fas fa-trash\"></i></button></td>";
+        // tr += "</tr>"
+
+        /* We add the table row to the table body */
+        commandLine = $(command_html)
+        commandLine.name = i;
+        //commandLine.append($("#commands-table"))
+        $("#commands-table").append(commandLine)
+        // commandLine.addEventListener('click', function () {
+        //   loadBackCommand(this.name)
+        // }, true);
+        // commandLine.addEventListener('mouseover', function () {
+        //   this.style.cursor = "pointer"
+        // }, true);
+        //commandsTable.appendChild(commandLine)
+      }
+
+    }
+  }
+
+  $(document).on('click', '.edit-button', function (e) {
+    var command_ix = $($(this).parent()[0]).attr('name');
+    $("#end-edit-btn").attr("disabled", false);
+    $("#store-frame-btn").text("Update Command")
+    loadBackCommand(command_ix)
+    drawPathOnFrontalView()
+  });
+
+  $(document).on('click', '#end-edit-btn', function (e) {
+    $("#end-edit-btn").attr("disabled", true);
+    $("#store-frame-btn").text("Store Frame Data")
+    selectedCommand = null;
+    refreshAnnos();
+    document.getElementById("commandBox").value = "";
+    document.getElementById("actionLeft").checked = false;
+    document.getElementById("actionRight").checked = false;
+    document.getElementById("actionChangeLaneLeft").checked = false;
+    document.getElementById("actionChangeLaneRight").checked = false;
+    document.getElementById("actionULeft").checked = false;
+    document.getElementById("actionURight").checked = false;
+    document.getElementById("actionPark").checked = false;
+    document.getElementById("actionStop").checked = false;
+    document.getElementById("actionFollow").checked = false;
+    document.getElementById("actionOther").checked = false;
+    document.getElementById("actionOtherText").value = "";
+    document.getElementById("legalityLegal").checked = false;
+    document.getElementById("legalityIllegal").checked = false;
+  });
+
+  $(document).on('click', '.trash-button', function (e) {
+    var command_ix = $($(this).parent()[0]).attr('name');
+    createdAnnotationsOutputList[command_ix]["delete"] = true;
+    updateCommandTable()
+  });
+
+  selectedCommand = null;
+
+  function loadBackCommand(commandIndex) {
+    selectedCommand = commandIndex;
+    document.getElementById("commandBox").value = createdAnnotationsOutputList[Number(commandIndex)]["command"]["commandText"];
+    //referredObjectIx = createdAnnotationsOutputList[Number(commandIndex)]["command"]["referredObjectIx"];
+    endPointPathIx = createdAnnotationsOutputList[Number(commandIndex)]["command"]["endPointPathIx"];
+    selectedFrameToken = createdAnnotationsOutputList[Number(commandIndex)]["command"]["selectedFrameToken"];
+    selectedFrameIx = createdAnnotationsOutputList[Number(commandIndex)]["command"]["selectedFrameIx"];
+
+    document.getElementById("commandBox").value = createdAnnotationsOutputList[Number(commandIndex)]["command"]["commandText"]
+    document.getElementById("actionLeft").checked = createdAnnotationsOutputList[Number(commandIndex)]["actions"]["actionLeft"];
+    document.getElementById("actionRight").checked = createdAnnotationsOutputList[Number(commandIndex)]["actions"]["actionRight"];
+    document.getElementById("actionChangeLaneLeft").checked = createdAnnotationsOutputList[Number(commandIndex)]["actions"]["actionChangeLaneLeft"];
+    document.getElementById("actionChangeLaneRight").checked = createdAnnotationsOutputList[Number(commandIndex)]["actions"]["actionChangeLaneRight"];
+    document.getElementById("actionULeft").checked = createdAnnotationsOutputList[Number(commandIndex)]["actions"]["actionULeft"];
+    document.getElementById("actionURight").checked = createdAnnotationsOutputList[Number(commandIndex)]["actions"]["actionURight"];
+    document.getElementById("actionPark").checked = createdAnnotationsOutputList[Number(commandIndex)]["actions"]["actionPark"];
+    document.getElementById("actionStop").checked = createdAnnotationsOutputList[Number(commandIndex)]["actions"]["actionStop"];
+    document.getElementById("actionFollow").checked = createdAnnotationsOutputList[Number(commandIndex)]["actions"]["actionFollow"];
+    document.getElementById("actionOther").checked = createdAnnotationsOutputList[Number(commandIndex)]["actions"]["actionOther"];
+    document.getElementById("actionOtherText").value = createdAnnotationsOutputList[Number(commandIndex)]["actions"]["actionOtherText"];
+
+    document.getElementById("legalityLegal").checked = createdAnnotationsOutputList[Number(commandIndex)]["legality"]["legalityLegal"];
+    document.getElementById("legalityIllegal").checked = createdAnnotationsOutputList[Number(commandIndex)]["legality"]["legalityIllegal"];
+
+    $("#video-slider").val(selectedFrameIx);
+    $("#frontal-view").attr('src', input['frontal'].replace(`_ix`, `_${selectedFrameIx}`));
+    $("#top-down-view-hidden").attr('src', input['top-down'].replace(`_ix`, `_${selectedFrameIx}`));
+    var image = new Image();
+    image.onload = function () {
+      drawImage(image);
+    }
+    image.src = input['top-down'].replace(`_ix`, `_${selectedFrameIx}`);
+
+    var dataUrl = input['frame_data_url'].replace(`_ix`, `_${selectedFrameIx}`);
+    $.getJSON(dataUrl, function (data) {
+      input["frame_data"] = data
+    })
+
+    loadFrameData()
+    //removeFrameData(commandIndex)
+    updateCommandTable()
+  }
+
+  function checkTasks() {
+    written_command = false
+    selected_object = false
+    any_checked_actions = false
+    any_checked_legality = false
+
+    if (document.getElementById("commandBox").value) {
+      written_command = true
+    }
+    // if (referredObjectIx.length) {
+    //   selected_object = true
+    // }
+    if (endPointPathIx !== null) {
+      selected_object = true
+    }
+    if (selectedFrameToken) {
+      selected_frame = true
+    }
+    if (document.getElementById("actionLeft").checked) {
+      any_checked_actions = true
+    }
+    if (document.getElementById("actionRight").checked) {
+      any_checked_actions = true
+    }
+    if (document.getElementById("actionChangeLaneLeft").checked) {
+      any_checked_actions = true
+    }
+    if (document.getElementById("actionChangeLaneRight").checked) {
+      any_checked_actions = true
+    }
+    if (document.getElementById("actionULeft").checked) {
+      any_checked_actions = true
+    }
+    if (document.getElementById("actionURight").checked) {
+      any_checked_actions = true
+    }
+    if (document.getElementById("actionPark").checked) {
+      any_checked_actions = true
+    }
+    if (document.getElementById("actionStop").checked) {
+      any_checked_actions = true
+    }
+    if (document.getElementById("actionFollow").checked) {
+      any_checked_actions = true
+    }
+    if (document.getElementById("actionOther").checked && document.getElementById("actionOtherText").value) {
+      any_checked_actions = true
+    }
+    if (document.getElementById("legalityLegal").checked) {
+      any_checked_legality = true
+    }
+    if (document.getElementById("legalityIllegal").checked) {
+      any_checked_legality = true
+    }
+
+
+    if (selected_object) {
+      document.getElementById("task_end_point").style.backgroundColor = "#5ae406"
+    } else {
+      document.getElementById("task_end_point").style.backgroundColor = "#f93005"
+    }
+    if (written_command) {
+      document.getElementById("task_command").style.backgroundColor = "#5ae406"
+    } else {
+      document.getElementById("task_command").style.backgroundColor = "#f93005"
+    }
+    if (any_checked_actions) {
+      document.getElementById("task_action").style.backgroundColor = "#5ae406"
+    } else {
+      document.getElementById("task_action").style.backgroundColor = "#f93005"
+    }
+    if (any_checked_legality) {
+      document.getElementById("task_feasibility").style.backgroundColor = "#5ae406"
+    } else {
+      document.getElementById("task_feasibility").style.backgroundColor = "#f93005"
+    }
+  }
+
+  function enableStoreFrameData() {
+    $('#store-frame-btn').prop('disabled', false);
+
+    written_command = false
+    selected_object = false
+    any_checked_actions = false
+    any_checked_legality = false
+
+    if (document.getElementById("commandBox").value) {
+      written_command = true
+    }
+    // if (referredObjectIx.length) {
+    //   selected_object = true
+    // }
+    if (endPointPathIx !== null) {
+      selected_object = true
+    }
+
+    if (document.getElementById("actionLeft").checked) {
+      any_checked_actions = true
+    }
+    if (document.getElementById("actionRight").checked) {
+      any_checked_actions = true
+    }
+    if (document.getElementById("actionChangeLaneLeft").checked) {
+      any_checked_actions = true
+    }
+    if (document.getElementById("actionChangeLaneRight").checked) {
+      any_checked_actions = true
+    }
+    if (document.getElementById("actionULeft").checked) {
+      any_checked_actions = true
+    }
+    if (document.getElementById("actionURight").checked) {
+      any_checked_actions = true
+    }
+    if (document.getElementById("actionPark").checked) {
+      any_checked_actions = true
+    }
+    if (document.getElementById("actionStop").checked) {
+      any_checked_actions = true
+    }
+    if (document.getElementById("actionFollow").checked) {
+      any_checked_actions = true
+    }
+    if (document.getElementById("actionOther").checked && document.getElementById("actionOtherText").value) {
+      any_checked_actions = true
+    }
+
+    if (document.getElementById("legalityLegal").checked) {
+      any_checked_legality = true
+    }
+    if (document.getElementById("legalityIllegal").checked) {
+      any_checked_legality = true
+    }
+
+    if ((written_command == false) || (any_checked_legality == false) || (selected_object == false) || (any_checked_actions == false)) {
+      $('#store-frame-btn').prop('disabled', true);
+    }
+  }
+
+  function enableSubmit() {
+    // Enable the submit button only if all the frames are annotated
+    $('#submit-btn').prop('disabled', true);
+    if (createdAnnotationsOutputList.length == 0) {
+      $('#submit-btn').prop('disabled', true);
+    } else {
+      for (var i = 0; i < createdAnnotationsOutputList.length; i++) {
+        createdAnnotationsOutput = createdAnnotationsOutputList[i];
+        if (createdAnnotationsOutput["delete"] == true) {
+          continue
+        }
+        $('#submit-btn').prop('disabled', false);
+        written_command = false
+        selected_object = false
+        any_checked_actions = false
+        any_checked_legality = false
+
+        createdAnnotationsOutputCommand = createdAnnotationsOutput["command"];
+        if (createdAnnotationsOutputCommand["commandText"]) {
+          written_command = true
+        }
+        // if (createdAnnotationsOutputCommand["referredObjectIx"].length) {
+        //   selected_object = true
+        // }
+        if (createdAnnotationsOutputCommand["endPointPathIx"] !== null) {
+          selected_object = true
+        }
+
+        createdAnnotationsOutputActions = createdAnnotationsOutput["actions"];
+        if (createdAnnotationsOutputActions["actionLeft"]) {
+          any_checked_actions = true
+        }
+        if (createdAnnotationsOutputActions["actionRight"]) {
+          any_checked_actions = true
+        }
+        if (createdAnnotationsOutputActions["actionChangeLaneLeft"]) {
+          any_checked_actions = true
+        }
+        if (createdAnnotationsOutputActions["actionChangeLaneRight"]) {
+          any_checked_actions = true
+        }
+        if (createdAnnotationsOutputActions["actionULeft"]) {
+          any_checked_actions = true
+        }
+        if (createdAnnotationsOutputActions["actionURight"]) {
+          any_checked_actions = true
+        }
+        if (createdAnnotationsOutputActions["actionPark"]) {
+          any_checked_actions = true
+        }
+        if (createdAnnotationsOutputActions["actionStop"]) {
+          any_checked_actions = true
+        }
+        if (createdAnnotationsOutputActions["actionFollow"]) {
+          any_checked_actions = true
+        }
+        if (createdAnnotationsOutputActions["actionOther"] && createdAnnotationsOutputActions["actionOtherText"]) {
+          any_checked_actions = true
+        }
+
+        createdAnnotationsOutputLegality = createdAnnotationsOutput["legality"];
+        if (createdAnnotationsOutputLegality["legalityLegal"]) {
+          any_checked_legality = true
+        }
+        if (createdAnnotationsOutputLegality["legalityIllegal"]) {
+          any_checked_legality = true
+        }
+
+        if ((written_command == false) || (any_checked_legality == false) || (selected_object == false) || (any_checked_actions == false)) {
+          $('#submit-btn').prop('disabled', true);
+        }
+      }
+    }
+  }
+
+  // Enable the UI.
+  function enable_hit() {
+    enabled = true;
+
+    // Set up submit handler.
+    easyturk.setupSubmit();
+    $('#submit-btn').click(function () {
+      // otherwise we're good. HIT done!
+      filtered_hit = []
+      for (var i = 0; i < createdAnnotationsOutputList.length; i++) {
+        createdAnnotationsOutput = createdAnnotationsOutputList[i];
+        if (createdAnnotationsOutput["delete"] == true) {
+          continue
+        }
+        filtered_hit.push(createdAnnotationsOutput)
+      }
+      easyturk.setOutput(filtered_hit);
+    });
+  }
+</script>
+</body>
+
+</html>
