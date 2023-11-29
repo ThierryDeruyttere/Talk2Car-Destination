@@ -6,6 +6,8 @@ import sys
 import math
 
 import copy
+from pathlib import Path
+
 import numpy as np
 from PIL import Image, ImageDraw
 
@@ -187,8 +189,11 @@ def convert_points(data_root, command_data):
                        path[i + 1][0], path[i + 1][1]), fill="#ff0000", width=2)
     image.show()
 
+    # check if normalized_jsons exists else create
+    Path("normalized_jsons").mkdir(exist_ok=True)
+
     if (sum((-limit_left <= p[:, 0]) & (p[:, 0] <= limit_right) & (-limit_bottom <= p[:, 1]) & (p[:, 1] <= limit_top)) == len(p)):
-        json.dump(sample_data, open("../data_root/normalized_jsons/rotated_{}".format(name_frame_data), "w"))
+        json.dump(sample_data, open("normalized_jsons/rotated_{}".format(name_frame_data), "w"))
         return command_data
     else:
         return None
@@ -201,7 +206,7 @@ def main():
     print("previous size", len(all_data))
     #convert_points(all_data[0])
     #convert_points(all_data[100])
-    data_root = "../data_root"
+    data_root = "../../data"
 
     for sample_data in all_data:
         new_command = convert_points(data_root, sample_data)
@@ -209,7 +214,7 @@ def main():
             command_data.append(new_command)
     print("new size", len(command_data))
 
-    json.dump(command_data, open("../data_root/rotated_data.json", "w"))
+    json.dump(command_data, open("rotated_data.json", "w"))
     print("Call clean_data.py to remove the commands that are not in the dataset anymore. Make sure that the path in clean_data.py is correct")
 
 if __name__ == "__main__":
