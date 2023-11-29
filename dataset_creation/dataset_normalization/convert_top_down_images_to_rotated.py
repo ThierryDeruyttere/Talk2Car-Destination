@@ -11,9 +11,6 @@ from anno_tool_api import NuScenesMapT2C, NuScenesMapExplorerT2C
 from nuscenes.nuscenes import NuScenes
 import sys
 
-sys.path.append(
-    "/cw/liir/NoCsBack/testliir/thierry/QuestionGeneration/generate_questions_simple"
-)
 from talk2car import Talk2Car
 from matplotlib import pyplot as plt
 
